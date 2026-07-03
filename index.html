@@ -1106,6 +1106,109 @@ function houseSVG(h) {
   </g>`;
 }
 
+// ---- The town (east of the barangay, reached by walking right)
+const WORLD_W = 4800;
+
+const PLACES = [
+  { id: 'school', label: 'Paaralan', x: 3780, y: 430 },
+  { id: 'church', label: 'Simbahan', x: 4440, y: 450 },
+];
+
+function schoolSVG(p) {
+  return `
+  <g class="house" data-place="${p.id}" transform="translate(${p.x} ${p.y})" style="cursor:pointer">
+    <g transform="translate(-300 0)">
+      <line x1="0" y1="0" x2="0" y2="-340" stroke="#8a8a94" stroke-width="8"/>
+      <circle cx="0" cy="-344" r="8" fill="#f2c94c"/>
+      <rect x="4" y="-336" width="96" height="30" fill="#2a52be"/>
+      <rect x="4" y="-306" width="96" height="30" fill="#d0342c"/>
+      <path d="M 4 -336 L 52 -321 L 4 -306 Z" fill="#fff"/>
+      <circle cx="24" cy="-321" r="7" fill="#f2c94c"/>
+    </g>
+    <rect x="-240" y="-220" width="480" height="220" rx="10" fill="#ffd98e"/>
+    <path d="M -260 -210 L 0 -290 L 260 -210 L 240 -192 L 0 -262 L -240 -192 Z" fill="#c9564a"/>
+    <g>
+      <rect x="-208" y="-170" width="70" height="62" rx="8" fill="#fffaf2"/>
+      <rect x="-200" y="-162" width="54" height="46" rx="6" fill="#bfe8f2"/>
+      <rect x="-35" y="-170" width="70" height="62" rx="8" fill="#fffaf2"/>
+      <rect x="-27" y="-162" width="54" height="46" rx="6" fill="#bfe8f2"/>
+      <rect x="138" y="-170" width="70" height="62" rx="8" fill="#fffaf2"/>
+      <rect x="146" y="-162" width="54" height="46" rx="6" fill="#bfe8f2"/>
+    </g>
+    <g transform="translate(0 -244)">
+      <rect x="-140" y="-40" width="280" height="58" rx="12" fill="#fffaf2" stroke="#d9c9a8" stroke-width="4"/>
+      ${bigLabel(0, 4, '🏫 Paaralan', { size: 32, fill: '#6a4a2a', stroke: '#fffaf2' })}
+    </g>
+    <g class="doorwrap" transform="translate(90 0)">
+      <rect x="-44" y="-112" width="88" height="112" rx="8" fill="#6a4a32" opacity="0.35"/>
+      <g class="door">
+        <rect x="-42" y="-110" width="84" height="110" rx="8" fill="#7a5232"/>
+        <rect x="-30" y="-98" width="60" height="38" rx="6" fill="#8a6242"/>
+        <rect x="-30" y="-48" width="60" height="38" rx="6" fill="#8a6242"/>
+        <circle cx="27" cy="-52" r="7" fill="#f2c94c"/>
+      </g>
+    </g>
+  </g>`;
+}
+
+function churchSVG(p) {
+  return `
+  <g class="house" data-place="${p.id}" transform="translate(${p.x} ${p.y})" style="cursor:pointer">
+    <rect x="-170" y="-200" width="340" height="200" rx="8" fill="#fffaf2"/>
+    <path d="M -190 -190 L 0 -318 L 190 -190 L 168 -172 L 0 -290 L -168 -172 Z" fill="#c9564a"/>
+    <g stroke="#d9a834" stroke-width="12" stroke-linecap="round">
+      <line x1="0" y1="-404" x2="0" y2="-320"/>
+      <line x1="-26" y1="-378" x2="26" y2="-378"/>
+    </g>
+    <g transform="translate(0 -140)">
+      <circle r="42" fill="#d9c9a8"/>
+      ${[0, 60, 120, 180, 240, 300].map((a, i) =>
+        `<path d="M 0 0 L ${(34 * Math.cos(a * Math.PI / 180)).toFixed(1)} ${(34 * Math.sin(a * Math.PI / 180)).toFixed(1)} A 34 34 0 0 1 ${(34 * Math.cos((a + 60) * Math.PI / 180)).toFixed(1)} ${(34 * Math.sin((a + 60) * Math.PI / 180)).toFixed(1)} Z"
+          fill="${['#ff8fb5', '#ffd94d', '#9edb7a', '#8ecae6', '#c9a0f0', '#f47a5e'][i]}"/>`).join('')}
+      <circle r="9" fill="#fffaf2"/>
+    </g>
+    <g transform="translate(0 -262)">
+      <rect x="-140" y="-40" width="280" height="58" rx="12" fill="#fffaf2" stroke="#d9c9a8" stroke-width="4"/>
+      ${bigLabel(0, 4, '⛪ Simbahan', { size: 32, fill: '#6a4a2a', stroke: '#fffaf2' })}
+    </g>
+    <g class="doorwrap">
+      <path d="M -46 0 L -46 -100 Q -46 -140 0 -140 Q 46 -140 46 -100 L 46 0 Z" fill="#6a4a32" opacity="0.35"/>
+      <g class="door">
+        <path d="M -42 0 L -42 -98 Q -42 -136 0 -136 Q 42 -136 42 -98 L 42 0 Z" fill="#7a5232"/>
+        <line x1="0" y1="-132" x2="0" y2="-4" stroke="#5a3a22" stroke-width="4"/>
+        <circle cx="-14" cy="-56" r="6" fill="#f2c94c"/><circle cx="14" cy="-56" r="6" fill="#f2c94c"/>
+      </g>
+    </g>
+    <g fill="#4ca858">
+      <ellipse cx="-130" cy="-6" rx="24" ry="16"/><ellipse cx="130" cy="-6" rx="24" ry="16"/>
+    </g>
+    <circle cx="-130" cy="-22" r="7" fill="#ffd94d"/><circle cx="130" cy="-22" r="7" fill="#ff8fb5"/>
+  </g>`;
+}
+
+function signpostSVG(x, y, entries, s = 1) {
+  return `<g class="deco" transform="translate(${x} ${y}) scale(${s})">
+    <rect x="-9" y="-250" width="18" height="250" rx="6" fill="#a0764c"/>
+    ${entries.map((e, i) => `
+      <g transform="translate(0 ${-216 + i * 64}) scale(${e.dir || 1} 1)">
+        <path d="M -92 -26 L 92 -26 L 92 26 L -92 26 Z M 92 -26 L 122 0 L 92 26"
+          fill="#c9a06a" stroke="#a87c4a" stroke-width="3"/>
+        <text x="0" y="13" text-anchor="middle" font-size="38" transform="scale(${e.dir || 1} 1)">${e.icon}</text>
+      </g>`).join('')}
+  </g>`;
+}
+
+// rice paddies for the field between the barangay and town
+function riceFieldSVG(x, y, s = 1) {
+  return `<g class="deco" transform="translate(${x} ${y}) scale(${s})">
+    <ellipse cx="0" cy="0" rx="220" ry="60" fill="#b8dc8e"/>
+    ${Array.from({ length: 4 }, (_, r) =>
+      Array.from({ length: 7 }, (_, c) =>
+        `<path d="M ${-150 + c * 50} ${-24 + r * 16} q -4 -18 0 -26 q 4 8 0 26 M ${-150 + c * 50} ${-24 + r * 16} q -10 -14 -12 -22 M ${-150 + c * 50} ${-24 + r * 16} q 10 -14 12 -22"
+          stroke="#4ca858" stroke-width="3" fill="none"/>`).join('')).join('')}
+  </g>`;
+}
+
 const MAP_DECOR = `
   ${palmTree(90, 560, 1.1)}
   ${palmTree(1530, 580, 1.0)}
@@ -1119,6 +1222,19 @@ const MAP_DECOR = `
     <circle cx="380" cy="560" r="8"/><circle cx="1210" cy="480" r="8"/><circle cx="700" cy="820" r="8"/>
     <circle cx="960" cy="860" r="8" fill="#ffd94d"/><circle cx="240" cy="620" r="8" fill="#ffd94d"/>
     <circle cx="1440" cy="760" r="8" fill="#f47a5e"/>
+  </g>
+  ${signpostSVG(1680, 700, [{ icon: '🛝' }, { icon: '🏫' }, { icon: '⛪' }])}
+  ${riceFieldSVG(2050, 640, 1)}
+  ${riceFieldSVG(2450, 780, 0.9)}
+  ${palmTree(1900, 420, 0.9)}
+  ${bananaPlant(2280, 460, 1)}
+  ${palmTree(2650, 500, 1.05)}
+  ${signpostSVG(2760, 700, [{ icon: '🏠', dir: -1 }], 0.9)}
+  ${palmTree(3450, 420, 0.9)}
+  ${bananaPlant(4680, 720, 1)}
+  <g fill="#ff8fb5">
+    <circle cx="2900" cy="820" r="8"/><circle cx="3300" cy="500" r="8" fill="#ffd94d"/>
+    <circle cx="4000" cy="760" r="8" fill="#f47a5e"/><circle cx="4600" cy="560" r="8"/>
   </g>`;
 
 Scenes.map = {
