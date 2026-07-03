@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#f6a8c9">
+<title>Barangay ni Eya</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background:#7ec8e3;
+    touch-action:none;
+    -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;
+  }
+  body { display:flex; align-items:center; justify-content:center; }
+  #stage {
+    display:block;
+    width:100vw; height:56.25vw;      /* 16:9 */
+    max-height:100vh; max-width:177.78vh;
+    touch-action:none;
+  }
+  #stage text { pointer-events:none; }
+  #rotate-hint {
+    position:fixed; inset:0; z-index:10;
+    display:none; align-items:center; justify-content:center;
+    background:#7ec8e3;
+  }
+  @media (orientation: portrait) {
+    #rotate-hint { display:flex; }
+  }
+  .spin-phone { animation: spinphone 2s ease-in-out infinite; transform-origin:50% 50%; }
+  @keyframes spinphone {
+    0%, 20% { transform:rotate(0deg); }
+    60%, 100% { transform:rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<svg id="stage" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet"></svg>
+
+<div id="rotate-hint" aria-hidden="true">
+  <svg viewBox="0 0 400 400" width="60%" style="max-width:340px">
+    <g class="spin-phone">
+      <rect x="150" y="90" width="100" height="180" rx="18" fill="#fff" stroke="#4a6b7c" stroke-width="10"/>
+      <circle cx="200" cy="242" r="10" fill="#4a6b7c"/>
+      <rect x="180" y="108" width="40" height="8" rx="4" fill="#4a6b7c"/>
+    </g>
+    <path d="M 110 330 A 120 120 0 0 1 60 210" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
+    <path d="M 40 240 L 60 200 L 92 232 Z" fill="#fff"/>
+  </svg>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================ HELPERS
+const $  = sel => document.querySelector(sel);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const rand  = (a, b) => a + Math.random() * (b - a);
+const pick  = arr => arr[Math.floor(Math.random() * arr.length)];
+const dist  = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
+
+const stage = document.getElementById('stage');
+
+// Convert a client (pointer) coordinate to 1600x900 design space.
+function toStage(clientX, clientY) {
+  const pt = new DOMPoint(clientX, clientY);
+  const m = stage.getScreenCTM();
+  if (!m) return { x: 0, y: 0 };
+  const p = pt.matrixTransform(m.inverse());
+  return { x: p.x, y: p.y };
+}
+
+// requestAnimationFrame tween. fn(t) gets t in [0,1]. Returns cancel().
+function tween(ms, fn, done) {
+  let cancelled = false;
+  const t0 = performance.now();
+  function frame(now) {
+    if (cancelled) return;
+    const t = clamp((now - t0) / ms, 0, 1);
+    fn(t);
+    if (t < 1) requestAnimationFrame(frame);
+    else if (done) done();
+  }
+  requestAnimationFrame(frame);
+  return () => { cancelled = true; };
+}
+const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+// ============================================================ STATE
+const State = {
+  muted: false,
+  outfit: null,            // filled by dress-up task
+  lastCheeredOutfit: null,
+  mapSpawn: null,          // where Eya stands when returning to map
+};
+
+// ============================================================ AUDIO (stub — real module in Task 3)
+const Audio = {
+  unlock() {},
+  sfx(name) {},
+  say(text) {},
+  music: { start() {}, stop() {} },
+  setMuted(b) { State.muted = b; },
+};
+
+// ============================================================ ART (character rig arrives in Task 2)
+
+// ============================================================ SCENES
+const Scenes = {};
+
+// ---- Title screen
+Scenes.title = {
+  enter() {
+    stage.innerHTML = `
+      <defs>
+        <linearGradient id="skyT" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#aee3f5"/><stop offset="1" stop-color="#e8f8ff"/>
+        </linearGradient>
+      </defs>
+      <rect width="1600" height="900" fill="url(#skyT)"/>
+      <!-- sun -->
+      <g transform="translate(1380,150)">
+        <g>
+          ${Array.from({length: 12}, (_, i) =>
+            `<rect x="-9" y="-150" width="18" height="52" rx="9" fill="#ffd94d"
+               transform="rotate(${i * 30})"/>`).join('')}
+          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="40s" repeatCount="indefinite"/>
+        </g>
+        <circle r="85" fill="#ffe066"/>
+        <circle cx="-25" cy="-10" r="9" fill="#e8a13a"/>
+        <circle cx="25" cy="-10" r="9" fill="#e8a13a"/>
+        <path d="M -28 22 Q 0 48 28 22" fill="none" stroke="#e8a13a" stroke-width="9" stroke-linecap="round"/>
+      </g>
+      <!-- drifting clouds -->
+      <g fill="#ffffff" opacity="0.9">
+        <g><ellipse cx="300" cy="150" rx="90" ry="42"/><ellipse cx="380" cy="130" rx="70" ry="36"/>
+          <animateTransform attributeName="transform" type="translate" values="0 0; 120 0; 0 0" dur="34s" repeatCount="indefinite"/></g>
+        <g><ellipse cx="800" cy="90" rx="80" ry="36"/><ellipse cx="870" cy="76" rx="56" ry="28"/>
+          <animateTransform attributeName="transform" type="translate" values="0 0; -100 0; 0 0" dur="42s" repeatCount="indefinite"/></g>
+      </g>
+      <!-- ground -->
+      <ellipse cx="800" cy="1050" rx="1100" ry="330" fill="#9edb7a"/>
+      <!-- title -->
+      <g text-anchor="middle" font-family="'Comic Sans MS','Chalkboard SE','Baloo 2',cursive">
+        <text x="803" y="323" font-size="118" font-weight="bold" fill="#3d7a52" opacity="0.35">Barangay ni Eya</text>
+        <text x="800" y="315" font-size="118" font-weight="bold" fill="#ff8fb5" stroke="#fff" stroke-width="4" paint-order="stroke">Barangay ni Eya</text>
+      </g>
+      <!-- play button -->
+      <g id="playBtn" style="cursor:pointer">
+        <circle cx="800" cy="590" r="115" fill="#ff8fb5" stroke="#fff" stroke-width="12">
+          <animate attributeName="r" values="115;124;115" dur="1.6s" repeatCount="indefinite"/>
+        </circle>
+        <path d="M 762 528 L 762 652 L 872 590 Z" fill="#fff"/>
+      </g>
+    `;
+    $('#playBtn').addEventListener('pointerdown', () => {
+      Audio.unlock();
+      Audio.music.start();
+      App.go('map');
+    }, { once: true });
+  },
+  exit() {}
+};
+
+// ---- Map placeholder (real map in Task 4)
+Scenes.map = {
+  enter() {
+    stage.innerHTML = `
+      <rect width="1600" height="900" fill="#9edb7a"/>
+      <text x="800" y="450" text-anchor="middle" font-size="80"
+        font-family="'Comic Sans MS',cursive" fill="#3d7a52">MAP</text>
+    `;
+  },
+  exit() {}
+};
+
+// ============================================================ ENGINE
+const App = {
+  root: stage,
+  current: null,
+  locked: false,           // guards double-navigation
+  go(id) {
+    if (App.locked) return;
+    if (App.current && App.current.exit) App.current.exit();
+    const [name, param] = id.split(':');
+    App.current = Scenes[name];
+    App.current.enter(param);
+  }
+};
+
+// block context menu / long-press menus and pinch zoom
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
+App.go('title');
+</script>
+</body>
+</html>
