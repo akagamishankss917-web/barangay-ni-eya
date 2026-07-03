@@ -699,6 +699,135 @@ const CHARACTERS = {
   },
 };
 
+// ============================================================ WALKER
+// Shared movement for every scene: quick tap = walk there; touch-and-hold (or
+// drag) = a soft joystick appears under the finger and steers continuously.
+function makeWalker(cfg) {
+  const pos = { x: cfg.x, y: cfg.y, facing: 1 };
+  const speed = cfg.speed || 0.45;         // design units per ms
+  const b = cfg.bounds;
+  let cancelTween = null;
+  let joyRaf = 0, joyUI = null, bobPhase = 0, lastStep = 0;
+  let destroyed = false;
+
+  cfg.g.innerHTML = buildCharacter(cfg.spec, {});
+
+  function place(bobY = 0) {
+    const s = cfg.scaleFn ? cfg.scaleFn(pos.y) : 1;
+    cfg.g.setAttribute('transform', `translate(${pos.x} ${pos.y + bobY}) scale(${s * pos.facing} ${s})`);
+    if (cfg.onMove) cfg.onMove(pos);
+  }
+
+  function stopTween() { if (cancelTween) { cancelTween(); cancelTween = null; } }
+
+  function walkTo(tx, ty, done) {
+    stopTween();
+    tx = clamp(tx, b.minX, b.maxX);
+    ty = clamp(ty, b.minY, b.maxY);
+    const from = { x: pos.x, y: pos.y };
+    const d = dist(from.x, from.y, tx, ty);
+    if (d < 8) { if (done) done(); return; }
+    if (tx !== from.x) pos.facing = tx < from.x ? -1 : 1;
+    const ms = clamp(d / speed, 240, 3200);
+    let last = 0;
+    cancelTween = tween(ms, t => {
+      const e2 = easeInOut(t);
+      pos.x = from.x + (tx - from.x) * e2;
+      pos.y = from.y + (ty - from.y) * e2;
+      const bob = -Math.abs(Math.sin(t * ms / 150)) * 10;
+      if (t * ms - last > 210) { last = t * ms; Audio.sfx('step'); }
+      place(bob);
+    }, () => { cancelTween = null; place(); if (done) done(); });
+  }
+
+  // Walk until within `reach` of (tx,ty), then run done().
+  function approach(tx, ty, reach, done) {
+    if (dist(pos.x, pos.y, tx, ty) <= reach) { if (done) done(); return; }
+    const a = Math.atan2(ty - pos.y, tx - pos.x);
+    walkTo(tx - Math.cos(a) * reach * 0.8, ty - Math.sin(a) * reach * 0.8, done);
+  }
+
+  function removeJoyUI() {
+    if (joyUI) { joyUI.remove(); joyUI = null; }
+    if (joyRaf) { cancelAnimationFrame(joyRaf); joyRaf = 0; }
+  }
+
+  function attachGround(el) {
+    el.addEventListener('pointerdown', e => {
+      if (App.locked || destroyed) return;
+      const startStage = toStage(e.clientX, e.clientY);
+      let mode = 'tap';
+      const vec = { x: 0, y: 0 };
+      let lastT = 0;
+
+      const startJoy = (cx, cy) => {
+        if (mode === 'joy' || destroyed) return;
+        mode = 'joy';
+        stopTween();
+        joyUI = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        joyUI.setAttribute('pointer-events', 'none');
+        joyUI.innerHTML = `
+          <circle id="joyBase" cx="${cx}" cy="${cy}" r="90" fill="#fff" opacity="0.28"/>
+          <circle id="joyKnob" cx="${cx}" cy="${cy}" r="44" fill="#fff" opacity="0.6"/>`;
+        (cfg.uiLayer || stage).appendChild(joyUI);
+        lastT = performance.now();
+        const step = now => {
+          if (!joyUI || destroyed) return;
+          const dt = Math.min(50, now - lastT); lastT = now;
+          const mag = Math.hypot(vec.x, vec.y);
+          if (mag > 0.12) {
+            pos.x = clamp(pos.x + vec.x * speed * dt, b.minX, b.maxX);
+            pos.y = clamp(pos.y + vec.y * speed * dt, b.minY, b.maxY);
+            if (Math.abs(vec.x) > 0.12) pos.facing = vec.x < 0 ? -1 : 1;
+            bobPhase += dt;
+            if (now - lastStep > 230) { lastStep = now; Audio.sfx('step'); }
+            place(-Math.abs(Math.sin(bobPhase / 150)) * 10 * mag);
+          } else place();
+          joyRaf = requestAnimationFrame(step);
+        };
+        joyRaf = requestAnimationFrame(step);
+      };
+      const holdTimer = setTimeout(() => startJoy(startStage.x, startStage.y), 170);
+
+      const move = ev => {
+        const p = toStage(ev.clientX, ev.clientY);
+        if (mode === 'tap' && dist(p.x, p.y, startStage.x, startStage.y) > 26) startJoy(startStage.x, startStage.y);
+        if (mode === 'joy' && joyUI) {
+          let dx = p.x - startStage.x, dy = p.y - startStage.y;
+          const m = Math.hypot(dx, dy), max = 90;
+          if (m > max) { dx = dx / m * max; dy = dy / m * max; }
+          vec.x = dx / max; vec.y = dy / max;
+          const knob = joyUI.querySelector('#joyKnob');
+          knob.setAttribute('cx', startStage.x + dx);
+          knob.setAttribute('cy', startStage.y + dy);
+        }
+      };
+      const up = () => {
+        clearTimeout(holdTimer);
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('pointercancel', up);
+        if (mode === 'tap') {
+          const p = cfg.toLocal ? cfg.toLocal(startStage) : startStage;
+          walkTo(p.x, p.y);
+        }
+        removeJoyUI();
+        place();
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('pointercancel', up);
+    });
+  }
+
+  place();
+  return {
+    pos, place, walkTo, approach, attachGround,
+    stop() { stopTween(); removeJoyUI(); },
+    destroy() { destroyed = true; stopTween(); removeJoyUI(); },
+  };
+}
+
 // ============================================================ SCENES
 const Scenes = {};
 
@@ -993,7 +1122,6 @@ const MAP_DECOR = `
   </g>`;
 
 Scenes.map = {
-  cancelWalk: null,
   enter() {
     Audio.music.start();
     const spawn = State.mapSpawn || { x: 800, y: 730 };
@@ -1030,44 +1158,18 @@ Scenes.map = {
       ${HOUSES.map(houseSVG).join('')}
       <g id="eyaWalk"></g>
       ${muteButtonSVG()}
+      <g id="uiLayer"></g>
     `;
 
-    const eyaG = $('#eyaWalk');
-    const pos = { x: spawn.x, y: spawn.y, facing: 1 };
-    const depthScale = y => clamp(0.42 + (y - 300) / 900 * 0.55, 0.42, 0.78);
-    // build once, move via transform
-    eyaG.innerHTML = buildCharacter(effectiveEyaSpec(), {});
-    const place = (bobY = 0) => {
-      const s = depthScale(pos.y);
-      eyaG.setAttribute('transform', `translate(${pos.x} ${pos.y + bobY}) scale(${s * pos.facing} ${s})`);
-    };
-    place();
-
-    const walkTo = (tx, ty, done) => {
-      if (Scenes.map.cancelWalk) Scenes.map.cancelWalk();
-      ty = clamp(ty, 360, 860);
-      const from = { x: pos.x, y: pos.y };
-      const d = dist(from.x, from.y, tx, ty);
-      if (d < 8) { if (done) done(); return; }
-      pos.facing = tx < from.x ? -1 : 1;
-      const ms = clamp(d / 0.45, 240, 2600);
-      let lastStep = 0;
-      Scenes.map.cancelWalk = tween(ms, t => {
-        const e = easeInOut(t);
-        pos.x = from.x + (tx - from.x) * e;
-        pos.y = from.y + (ty - from.y) * e;
-        const bob = -Math.abs(Math.sin(t * ms / 150)) * 10;
-        if (t * ms - lastStep > 210) { lastStep = t * ms; Audio.sfx('step'); }
-        place(bob);
-      }, () => { Scenes.map.cancelWalk = null; place(); if (done) done(); });
-    };
-
-    // ground taps
-    $('#mapGround').addEventListener('pointerdown', e => {
-      if (App.locked) return;
-      const p = toStage(e.clientX, e.clientY);
-      walkTo(p.x, p.y);
+    const eya = this.eya = makeWalker({
+      g: $('#eyaWalk'), spec: effectiveEyaSpec(),
+      x: spawn.x, y: spawn.y,
+      bounds: { minX: 60, maxX: 1540, minY: 360, maxY: 860 },
+      scaleFn: y => clamp(0.42 + (y - 300) / 900 * 0.55, 0.42, 0.78),
+      uiLayer: $('#uiLayer'),
     });
+    const walkTo = (tx, ty, done) => eya.walkTo(tx, ty, done);
+    eya.attachGround($('#mapGround'));
 
     // decorations wiggle
     stage.querySelectorAll('.deco').forEach(el => {
@@ -1114,8 +1216,7 @@ Scenes.map = {
     wireMuteButton();
   },
   exit() {
-    if (Scenes.map.cancelWalk) Scenes.map.cancelWalk();
-    Scenes.map.cancelWalk = null;
+    if (this.eya) { this.eya.destroy(); this.eya = null; }
   }
 };
 
@@ -1437,17 +1538,20 @@ Scenes.house = {
         <rect x="-52" y="-66" width="104" height="132" rx="6" fill="#fffaf2"/>
         <path d="M 0 34 C -44 2 -34 -40 -8 -30 Q 0 -26 0 -18 Q 0 -26 8 -30 C 34 -40 44 2 0 34 Z" fill="#ff8fb5"/>
       </g>
+      <rect id="roomGround" width="1600" height="900" fill="#000" opacity="0"/>
       <g id="propLayer"></g>
       <g id="residentLayer"></g>
+      <g id="eyaWalkH"></g>
       <g id="fxLayer"></g>
       <g id="homeBtn" style="cursor:pointer">
         <circle cx="92" cy="806" r="58" fill="#fff" opacity="0.9"/>
         <text x="92" y="830" text-anchor="middle" font-size="58">🏠</text>
       </g>
       ${muteButtonSVG()}
+      <g id="uiLayerH"></g>
     `;
 
-    // residents + Eya
+    // residents + Eya (Eya is a walker: tap to walk, hold to steer)
     const rl = $('#residentLayer');
     const residentPos = {};
     let rHtml = '';
@@ -1457,17 +1561,26 @@ Scenes.house = {
         buildCharacter(CHARACTERS[r], { x: 1040 - i * 190, y: 760, scale: 0.72, idle: true, facing: -1 })
       }</g>`;
     });
-    rHtml += `<g class="resident" data-key="eya">${
-      buildCharacter(effectiveEyaSpec(), { x: 250, y: 830, scale: 0.66, idle: true })
-    }</g>`;
     rl.innerHTML = rHtml;
+
+    const eya = this.eya = makeWalker({
+      g: $('#eyaWalkH'), spec: effectiveEyaSpec(),
+      x: 250, y: 800,
+      bounds: { minX: 120, maxX: 1480, minY: 630, maxY: 865 },
+      scaleFn: y => 0.5 + (y - 630) / 235 * 0.2,
+      uiLayer: $('#uiLayerH'),
+    });
+    eya.attachGround($('#roomGround'));
 
     rl.querySelectorAll('.resident').forEach(el => {
       el.addEventListener('pointerdown', e => {
         e.stopPropagation();
-        waveCharacter(el);
-        Audio.sfx('chime');
-        Audio.say(CHARACTERS[el.dataset.key].label);
+        const rp = residentPos[el.dataset.key];
+        eya.approach(rp.x, rp.y, 190, () => {
+          waveCharacter(el);
+          Audio.sfx('chime');
+          Audio.say(CHARACTERS[el.dataset.key].label);
+        });
       });
     });
     // welcome wave from the host — and a compliment if Eya changed her outfit
@@ -1500,32 +1613,36 @@ Scenes.house = {
           el.addEventListener('pointerdown', e => {
             e.stopPropagation();
             if (App.locked) return;
-            Audio.sfx('sparkle');
-            App.go('dressup');
+            eya.approach(p.x, p.y, 230, () => {
+              Audio.sfx('sparkle');
+              App.go('dressup');
+            });
           });
           break;
         case 'tap':
           el.addEventListener('pointerdown', e => {
             e.stopPropagation();
-            Audio.sfx(p.sfx || 'pop');
-            const s = p.s;
-            if (p.anim === 'rock') {
-              tween(900, t => el.setAttribute('transform',
-                `translate(${p.x} ${p.y}) scale(${s}) rotate(${Math.sin(t * Math.PI * 4) * 12})`),
-                () => setXY(el, p.x, p.y));
-            } else if (p.anim === 'pulse' || p.anim === 'squeeze') {
-              tween(500, t => {
-                const k = 1 + Math.sin(t * Math.PI * 2) * 0.12;
-                el.setAttribute('transform', `translate(${p.x} ${p.y}) scale(${s * k} ${s / k})`);
-              }, () => setXY(el, p.x, p.y));
-            } else if (p.anim === 'wiggle') {
-              tween(500, t => el.setAttribute('transform',
-                `translate(${p.x} ${p.y}) scale(${s}) rotate(${Math.sin(t * Math.PI * 6) * 4})`),
-                () => setXY(el, p.x, p.y));
-            } else if (p.anim === 'sheen') {
-              const sheen = el.querySelector('.sheen');
-              tween(600, t => sheen && sheen.setAttribute('transform', `translate(${-60 + t * 120} 0)`));
-            }
+            eya.approach(p.x, p.y, 210, () => {
+              Audio.sfx(p.sfx || 'pop');
+              const s = p.s;
+              if (p.anim === 'rock') {
+                tween(900, t => el.setAttribute('transform',
+                  `translate(${p.x} ${p.y}) scale(${s}) rotate(${Math.sin(t * Math.PI * 4) * 12})`),
+                  () => setXY(el, p.x, p.y));
+              } else if (p.anim === 'pulse' || p.anim === 'squeeze') {
+                tween(500, t => {
+                  const k = 1 + Math.sin(t * Math.PI * 2) * 0.12;
+                  el.setAttribute('transform', `translate(${p.x} ${p.y}) scale(${s * k} ${s / k})`);
+                }, () => setXY(el, p.x, p.y));
+              } else if (p.anim === 'wiggle') {
+                tween(500, t => el.setAttribute('transform',
+                  `translate(${p.x} ${p.y}) scale(${s}) rotate(${Math.sin(t * Math.PI * 6) * 4})`),
+                  () => setXY(el, p.x, p.y));
+              } else if (p.anim === 'sheen') {
+                const sheen = el.querySelector('.sheen');
+                tween(600, t => sheen && sheen.setAttribute('transform', `translate(${-60 + t * 120} 0)`));
+              }
+            });
           });
           break;
         case 'water':
@@ -1564,21 +1681,25 @@ Scenes.house = {
         case 'umbrella':
           el.addEventListener('pointerdown', e => {
             e.stopPropagation();
-            Audio.sfx('boing');
-            const open = el.querySelector('.umb-open'), closed = el.querySelector('.umb-closed');
-            const isOpen = open.style.display !== 'none';
-            open.style.display = isOpen ? 'none' : '';
-            closed.style.display = isOpen ? '' : 'none';
-            wobble(el);
+            eya.approach(p.x, p.y, 210, () => {
+              Audio.sfx('boing');
+              const open = el.querySelector('.umb-open'), closed = el.querySelector('.umb-closed');
+              const isOpen = open.style.display !== 'none';
+              open.style.display = isOpen ? 'none' : '';
+              closed.style.display = isOpen ? '' : 'none';
+              wobble(el);
+            });
           });
           break;
         case 'flash':
           el.addEventListener('pointerdown', e => {
             e.stopPropagation();
-            Audio.sfx('chime');
-            const fx = $('#fxLayer');
-            fx.innerHTML = `<rect width="1600" height="900" fill="#fff"/>`;
-            setTimeout(() => { fx.innerHTML = ''; }, 180);
+            eya.approach(p.x, p.y, 210, () => {
+              Audio.sfx('chime');
+              const fx = $('#fxLayer');
+              fx.innerHTML = `<rect width="1600" height="900" fill="#fff"/>`;
+              setTimeout(() => { fx.innerHTML = ''; }, 180);
+            });
           });
           break;
       }
@@ -1629,7 +1750,9 @@ Scenes.house = {
     if (target) { waveCharacter(target); setTimeout(() => waveCharacter(target), 1300); }
     setTimeout(() => Audio.say(CHEER), 500);
   },
-  exit() {}
+  exit() {
+    if (this.eya) { this.eya.destroy(); this.eya = null; }
+  }
 };
 
 // ============================================================ DRESS-UP
