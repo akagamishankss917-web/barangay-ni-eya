@@ -7,6 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#f6a8c9">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Barangay ni Eya</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -1650,9 +1653,13 @@ Scenes.dressup = {
 const App = {
   root: stage,
   current: null,
-  locked: false,           // guards double-navigation
+  locked: false,           // guards mid-sequence navigation (door opening)
+  _lastGo: 0,
   go(id) {
     if (App.locked) return;
+    const now = performance.now();
+    if (now - App._lastGo < 350) return; // toddler double-tap guard
+    App._lastGo = now;
     if (App.current && App.current.exit) App.current.exit();
     const [name, param] = id.split(':');
     App.current = Scenes[name];
@@ -1667,6 +1674,13 @@ document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preven
 
 State.loadOutfit();
 State.lastCheeredOutfit = JSON.stringify(State.outfit);
+
+// offline support (no-op on file:// or unsupported browsers)
+try {
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    navigator.serviceWorker.register('sw.js');
+  }
+} catch (e) {}
 
 // #lineup, #map, #house-<id>, #dressup are debug entry points
 const dbg = location.hash.slice(1);
