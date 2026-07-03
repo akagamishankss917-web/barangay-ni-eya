@@ -252,6 +252,14 @@ const Audio = (() => {
       },
       stop() { clearInterval(musicTimer); musicTimer = null; },
     },
+    // a gentle 8-note hymn phrase, plays once (safe to retrigger)
+    hymn() {
+      if (State.muted || !ensureCtx()) return;
+      try {
+        [523, 659, 784, 880, 784, 659, 587, 523].forEach((f, i) =>
+          tone({ freq: f, dur: 0.5, type: 'triangle', vol: 0.24, at: i * 0.5, out: musicGain }));
+      } catch (e) {}
+    },
     setMuted(b) {
       State.muted = b;
       try { localStorage.setItem('eya-muted', b ? '1' : '0'); } catch (e) {}
@@ -1864,13 +1872,68 @@ Scenes.place = {
     });
   },
 
-  // ============ CHURCH (SOFT) ============
+  // ============ CHURCH (SOFT — Shepherds of Faith and Truth) ============
   enterChurch() {
+    const glass = (x, cols) => `
+      <g class="glass" data-glass="1" transform="translate(${x} 250)" style="cursor:pointer">
+        <path d="M -54 120 L -54 -40 Q -54 -120 0 -120 Q 54 -120 54 -40 L 54 120 Z" fill="#d9c9a8"/>
+        <clipPath id="gc${x}"><path d="M -46 112 L -46 -38 Q -46 -110 0 -110 Q 46 -110 46 -38 L 46 112 Z"/></clipPath>
+        <g clip-path="url(#gc${x})">
+          ${cols.map((c, i) => `<rect x="-46" y="${-110 + i * 45}" width="92" height="45" fill="${c}"/>`).join('')}
+          <line x1="0" y1="-110" x2="0" y2="112" stroke="#fffaf2" stroke-width="4"/>
+          ${[-60, -15, 30, 75].map(y => `<line x1="-46" y1="${y}" x2="46" y2="${y}" stroke="#fffaf2" stroke-width="4"/>`).join('')}
+        </g>
+      </g>`;
+    const pew = (x, y) => `
+      <g data-pew="1" transform="translate(${x} ${y})" style="cursor:pointer">
+        <rect x="-90" y="-40" width="180" height="16" rx="5" fill="#9a6a42"/>
+        <rect x="-90" y="-2" width="180" height="20" rx="5" fill="#a87c4a"/>
+        <rect x="-84" y="14" width="14" height="40" fill="#8a5f3c"/>
+        <rect x="70" y="14" width="14" height="40" fill="#8a5f3c"/>
+      </g>`;
     stage.innerHTML = `
-      <rect width="1600" height="900" fill="#f6ead2"/>
-      ${bigLabel(800, 460, 'SOFT Church', { size: 60, fill: '#8a6a3a', stroke: '#fff' })}
+      <rect width="1600" height="640" fill="#f3e3c6"/>
+      <rect y="600" width="1600" height="300" fill="#b98a5a"/>
+      ${Array.from({ length: 5 }, (_, i) => `<line x1="0" y1="${660 + i * 50}" x2="1600" y2="${660 + i * 50}" stroke="#a87c4a" stroke-width="3"/>`).join('')}
+      <rect y="590" width="1600" height="18" fill="#9a6a42"/>
+      <!-- aisle runner -->
+      <path d="M 800 600 L 640 900 L 960 900 Z" fill="#c94f5c" opacity="0.5"/>
+      <!-- altar with cross -->
+      <g transform="translate(800 250)">
+        <rect x="-120" y="120" width="240" height="120" rx="10" fill="#a87c4a"/>
+        <rect x="-120" y="120" width="240" height="20" fill="#c9a06a"/>
+        <g stroke="#d9a834" stroke-width="20" stroke-linecap="round">
+          <line x1="0" y1="-30" x2="0" y2="110"/>
+          <line x1="-44" y1="14" x2="44" y2="14"/>
+        </g>
+        <!-- flowers on the altar -->
+        ${[-80, 80].map(dx => `<g transform="translate(${dx} 130)">
+          ${[0, 72, 144, 216, 288].map(a => `<ellipse cx="0" cy="-22" rx="8" ry="12" fill="#ff8fb5" transform="rotate(${a})"/>`).join('')}
+          <circle r="7" fill="#ffd94d"/><line x1="0" y1="0" x2="0" y2="30" stroke="#4ca858" stroke-width="5"/></g>`).join('')}
+      </g>
+      ${glass(250, ['#8ecae6', '#9edb7a', '#ffd94d', '#ff8fb5', '#c9a0f0'])}
+      ${glass(1350, ['#ff8fb5', '#ffd94d', '#9edb7a', '#8ecae6', '#f47a5e'])}
+      <!-- choir on a riser -->
+      <g id="choir" style="cursor:pointer" data-choir="1">
+        <rect x="1120" y="560" width="300" height="30" rx="6" fill="#a87c4a"/>
+        ${['auntie', 'titaJoyce', 'titaKath'].map((k, i) =>
+          `<g class="choirMember">${buildCharacter(CHARACTERS[k], { x: 1180 + i * 90, y: 560, scale: 0.42, idle: true })}</g>`).join('')}
+        ${bigLabel(1270, 690, '🎵', { size: 40, fill: '#fff', stroke: '#8a6a3a' })}
+      </g>
+      ${pew(430, 760)}
+      ${pew(430, 850)}
       <rect id="roomGround" width="1600" height="900" fill="#000" opacity="0"/>
+      <g id="peopleLayer"></g>
+      <!-- offering basket on a stand -->
+      <g id="basketStand" transform="translate(1050 820)">
+        <rect x="-8" y="0" width="16" height="60" fill="#8a5f3c"/>
+        <path d="M -50 -30 L 50 -30 L 40 24 L -40 24 Z" fill="#c9a06a"/>
+        <path d="M -50 -30 Q 0 -74 50 -30" stroke="#a87c4a" stroke-width="8" fill="none"/>
+        <path d="M -44 -16 L 44 -16 M -40 0 L 40 0" stroke="#a87c4a" stroke-width="4"/>
+      </g>
+      <g id="propLayer"></g>
       <g id="eyaWalkP"></g>
+      <g id="fxLayer"></g>
       <g id="homeBtn" style="cursor:pointer">
         <circle cx="92" cy="806" r="58" fill="#fff" opacity="0.9"/>
         <text x="92" y="830" text-anchor="middle" font-size="58">🏠</text>
@@ -1878,7 +1941,88 @@ Scenes.place = {
       ${muteButtonSVG()}
       <g id="uiLayerP"></g>
     `;
-    this.finishRoom();
+
+    // pastor by the altar
+    $('#peopleLayer').innerHTML =
+      `<g class="person" data-key="pastor" style="cursor:pointer">${
+        buildCharacter(CHARACTERS.pastor, { x: 640, y: 720, scale: 0.72, idle: true })
+      }</g>`;
+
+    const eya = this.finishRoom();
+    this.wirePerson($('.person[data-key="pastor"]'), 640, 720, 'Welcome, Eya! God bless you!');
+
+    // stained-glass twinkle
+    stage.querySelectorAll('[data-glass="1"]').forEach(g => {
+      g.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        Audio.sfx('sparkle');
+        tween(700, t => g.setAttribute('opacity', 0.6 + Math.abs(Math.sin(t * Math.PI * 3)) * 0.4),
+          () => g.setAttribute('opacity', 1));
+      });
+    });
+
+    // choir sings a hymn and sways
+    $('#choir').addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      Audio.hymn();
+      stage.querySelectorAll('.choirMember').forEach((m, i) => {
+        tween(4000, t => m.setAttribute('transform', `rotate(${Math.sin(t * Math.PI * 8 + i) * 4} ${1180 + i * 90} 620)`),
+          () => m.setAttribute('transform', ''));
+      });
+    });
+
+    // offering: drag a coin into the basket
+    $('#propLayer').innerHTML = `
+      <g class="prop" data-id="coin" data-x="880" data-y="840" data-s="1" transform="translate(880 840)" style="cursor:pointer">
+        <circle r="30" fill="#f2c94c" stroke="#d9a834" stroke-width="4"/>
+        <circle r="22" fill="#ffe066"/>
+        <text x="0" y="10" text-anchor="middle" font-size="30" font-weight="bold" fill="#c99a2a" font-family="sans-serif">₱</text>
+      </g>`;
+    const coin = $('.prop[data-id="coin"]');
+    makeDraggable(coin, {
+      onDrop: (x, y) => {
+        if (dist(x, y, 1050, 800) < 150) {
+          Audio.sfx('coin');
+          tween(500, t => coin.setAttribute('transform', `translate(1050 ${800 + t * 20}) scale(${1 - t})`),
+            () => {
+              Audio.say('Salamat, Eya!');
+              setTimeout(() => { setXY(coin, 880, 840); coin.setAttribute('transform', 'translate(880 840)'); }, 2000);
+            });
+        } else {
+          setXY(coin, 880, 840);
+        }
+      },
+    });
+
+    // pews: sit down and pray
+    stage.querySelectorAll('[data-pew="1"]').forEach(pw => {
+      const m = pw.getAttribute('transform').match(/translate\(([-\d.]+) ([-\d.]+)/);
+      const px = +m[1], py = +m[2];
+      pw.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        eya.approach(px + 20, py + 60, 120, () => this.prayAt(px, py - 30));
+      });
+    });
+  },
+
+  prayAt(x, y) {
+    if (App.locked) return;
+    App.locked = true;
+    const fx = $('#fxLayer');
+    fx.innerHTML = `
+      <g id="prayBubble" transform="translate(${x} ${y - 250})" opacity="0">
+        <ellipse cx="0" cy="0" rx="70" ry="56" fill="#fff" opacity="0.97"/>
+        <circle cx="-46" cy="40" r="12" fill="#fff" opacity="0.95"/>
+        <circle cx="-64" cy="60" r="8" fill="#fff" opacity="0.95"/>
+        <text x="0" y="20" text-anchor="middle" font-size="60">🙏</text>
+      </g>`;
+    const bubble = $('#prayBubble');
+    tween(300, t => bubble.setAttribute('opacity', t), () => {
+      Audio.sfx('chime');
+      Audio.say('Amen!');
+      setTimeout(() => tween(400, t => bubble.setAttribute('opacity', 1 - t),
+        () => { fx.innerHTML = ''; App.locked = false; }), 1400);
+    });
   },
 
   exit() {
