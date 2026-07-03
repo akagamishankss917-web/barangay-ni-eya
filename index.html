@@ -1211,7 +1211,7 @@ const HOUSE_PROPS = {
     { id: 'mirror', x: 1330, y: 380, s: 1, kind: 'tap', sfx: 'sparkle', anim: 'sheen' },
   ],
   kath: [
-    { id: 'teddy', x: 620, y: 810, s: 1, kind: 'tap', sfx: 'chime', anim: 'squeeze' },
+    { id: 'teddy', x: 620, y: 810, s: 1, kind: 'drag', dropSfx: 'chime' },
     { id: 'binoculars', x: 900, y: 830, s: 1, kind: 'peek' },
     { id: 'sneakers', x: 1280, y: 850, s: 1, kind: 'drag' },
   ],
@@ -1225,6 +1225,38 @@ const HOUSE_PROPS = {
 function propArt(p) {
   if (p.art) return p.art();
   return PROP_ART[p.id] ? PROP_ART[p.id]() : PROP_ART[p.id.replace(/\d+$/, '')]();
+}
+
+// One tiny, ignorable wish per house: drag this prop to this person → cheer.
+const HOUSE_TASKS = {
+  eya:   { propId: 'blockE', target: 'daddy' },
+  lola:  { propId: 'kaldero', target: 'lola' },
+  boy:   { propId: 'basketball', target: 'titoBoy' },
+  joyce: { propId: 'flowerPot', target: 'titaJoyce' },
+  kath:  { propId: 'teddy', target: 'titaKath' },
+  aunt:  { propId: 'basket', target: 'auntie' },
+};
+const CHEER = 'Salamat, Eya! Ang galing!';
+
+function confettiBurst(x, y) {
+  const fx = $('#fxLayer');
+  if (!fx) return;
+  const colors = ['#ff8fb5', '#ffd94d', '#8ecae6', '#9edb7a', '#f47a5e', '#c9a0f0'];
+  const bits = Array.from({ length: 40 }, () => ({
+    x: x + rand(-40, 40), y: y + rand(-30, 10),
+    vx: rand(-260, 260), vy: rand(-520, -180),
+    rot: rand(0, 360), vr: rand(-500, 500), c: pick(colors), w: rand(10, 20),
+  }));
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  fx.appendChild(g);
+  tween(1400, t => {
+    const s = t * 1.4;
+    g.innerHTML = bits.map(b => {
+      const bx = b.x + b.vx * s, by = b.y + b.vy * s + 420 * s * s;
+      return `<rect x="-8" y="-5" width="${b.w}" height="10" rx="3" fill="${b.c}"
+        transform="translate(${bx} ${by}) rotate(${b.rot + b.vr * s})" opacity="${1 - t * 0.7}"/>`;
+    }).join('');
+  }, () => g.remove());
 }
 
 Scenes.house = {
@@ -1270,8 +1302,10 @@ Scenes.house = {
 
     // residents + Eya
     const rl = $('#residentLayer');
+    const residentPos = {};
     let rHtml = '';
     h.residents.filter(r => r !== 'eya').forEach((r, i) => {
+      residentPos[r] = { x: 1040 - i * 190, y: 760 };
       rHtml += `<g class="resident" data-key="${r}" style="cursor:pointer">${
         buildCharacter(CHARACTERS[r], { x: 1040 - i * 190, y: 760, scale: 0.72, idle: true, facing: -1 })
       }</g>`;
@@ -1398,13 +1432,51 @@ Scenes.house = {
       }
     });
 
+    // ---- tiny optional wish (thought bubble)
+    this.taskState = null;
+    const task = HOUSE_TASKS[h.id];
+    const taskProp = task && props.find(p => p.id === task.propId);
+    const tp = task && residentPos[task.target];
+    if (task && taskProp && tp) {
+      const bx = tp.x + 30, by = tp.y - 320; // above the resident's head
+      const bubble = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      bubble.setAttribute('id', 'wishBubble');
+      bubble.innerHTML = `
+        <g transform="translate(${bx} ${by})">
+          <circle cx="-72" cy="76" r="10" fill="#fff" opacity="0.95"/>
+          <circle cx="-54" cy="56" r="16" fill="#fff" opacity="0.95"/>
+          <ellipse cx="0" cy="0" rx="92" ry="70" fill="#fff" opacity="0.97"/>
+          <ellipse cx="-58" cy="-22" rx="42" ry="34" fill="#fff" opacity="0.97"/>
+          <ellipse cx="56" cy="-20" rx="44" ry="36" fill="#fff" opacity="0.97"/>
+          <g transform="scale(0.55) translate(0 10)">${propArt(taskProp)}</g>
+          <animateTransform attributeName="transform" type="translate" values="0 0; 0 -10; 0 0" dur="2.6s" repeatCount="indefinite" additive="sum"/>
+        </g>`;
+      $('#fxLayer').before(bubble);
+      this.taskState = { ...task, tp, done: false };
+    }
+
     $('#homeBtn').addEventListener('pointerdown', e => {
       e.stopPropagation();
       App.go('map');
     });
     wireMuteButton();
   },
-  onPropDrop() {}, // Task 6 hooks task completion here
+  onPropDrop(h, p, x, y, el) {
+    const ts = this.taskState;
+    if (!ts || ts.done || p.id !== ts.propId) return;
+    if (dist(x, y, ts.tp.x, ts.tp.y - 110) > 190) return;
+    ts.done = true;
+    const bubble = $('#wishBubble');
+    if (bubble) {
+      Audio.sfx('sparkle');
+      tween(300, t => bubble.setAttribute('opacity', 1 - t), () => bubble.remove());
+    }
+    Audio.sfx('fanfare');
+    confettiBurst(ts.tp.x, ts.tp.y - 260);
+    const target = stage.querySelector(`.resident[data-key="${ts.target}"]`);
+    if (target) { waveCharacter(target); setTimeout(() => waveCharacter(target), 1300); }
+    setTimeout(() => Audio.say(CHEER), 500);
+  },
   exit() {}
 };
 
