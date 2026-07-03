@@ -102,14 +102,158 @@ const State = {
   mapSpawn: null,          // where Eya stands when returning to map
 };
 
-// ============================================================ AUDIO (stub — real module in Task 3)
-const Audio = {
-  unlock() {},
-  sfx(name) {},
-  say(text) {},
-  music: { start() {}, stop() {} },
-  setMuted(b) { State.muted = b; },
-};
+// ============================================================ AUDIO
+// Everything synthesized in WebAudio (no audio files); Taglish phrases via
+// on-device speech synthesis. All guarded — silence is always acceptable.
+const Audio = (() => {
+  let ctx = null, master = null, musicGain = null, musicTimer = null;
+
+  try { State.muted = localStorage.getItem('eya-muted') === '1'; } catch (e) {}
+
+  function ensureCtx() {
+    if (ctx) return ctx;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = State.muted ? 0 : 1;
+      master.connect(ctx.destination);
+      musicGain = ctx.createGain();
+      musicGain.gain.value = 0.09;
+      musicGain.connect(master);
+    } catch (e) { ctx = null; }
+    return ctx;
+  }
+
+  // one short synthesized tone
+  function tone({ freq = 440, dur = 0.15, type = 'sine', vol = 0.5, at = 0, slide = 0, out = null }) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime + at;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t0);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), t0 + dur);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    o.connect(g); g.connect(out || master);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+
+  function noise({ dur = 0.08, vol = 0.5, freq = 800, at = 0 }) {
+    if (!ctx) return;
+    const t0 = ctx.currentTime + at;
+    const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq;
+    const g = ctx.createGain(); g.gain.value = vol;
+    src.connect(f); f.connect(g); g.connect(master);
+    src.start(t0);
+  }
+
+  const SFX = {
+    knock()   { noise({ dur: 0.09, vol: 0.9, freq: 320 }); noise({ dur: 0.09, vol: 0.9, freq: 300, at: 0.22 }); },
+    pop()     { tone({ freq: 500, dur: 0.09, type: 'square', vol: 0.25, slide: 300 }); },
+    sparkle() { [1200, 1600, 2100, 2700].forEach((f, i) => tone({ freq: f, dur: 0.12, vol: 0.22, at: i * 0.05 })); },
+    boing()   { tone({ freq: 180, dur: 0.28, type: 'triangle', vol: 0.5, slide: 260 }); },
+    chime()   { tone({ freq: 880, dur: 0.4, vol: 0.3 }); tone({ freq: 1320, dur: 0.5, vol: 0.2, at: 0.08 }); },
+    step()    { noise({ dur: 0.04, vol: 0.25, freq: 700 }); },
+    meow()    { tone({ freq: 700, dur: 0.35, type: 'sawtooth', vol: 0.12, slide: -280 }); },
+    bounce()  { tone({ freq: 240, dur: 0.14, type: 'triangle', vol: 0.4, slide: -120 }); },
+    fanfare() {
+      [[523, 0], [659, 0.12], [784, 0.24], [1047, 0.38]].forEach(([f, at]) =>
+        tone({ freq: f, dur: 0.35, type: 'triangle', vol: 0.35, at }));
+      [[523, 0.38], [659, 0.38], [784, 0.38]].forEach(([f, at]) =>
+        tone({ freq: f, dur: 0.6, type: 'triangle', vol: 0.2, at }));
+    },
+  };
+
+  // gentle plucked pentatonic lullaby-ish loop
+  const SCALE = [392, 440, 523, 587, 659, 784];
+  function scheduleBar() {
+    if (!ctx || State.muted) return;
+    for (let i = 0; i < 4; i++) {
+      if (Math.random() < 0.75) {
+        tone({ freq: pick(SCALE), dur: 0.5, type: 'sine', vol: 0.5, at: i * 0.42, out: musicGain });
+      }
+      if (i === 0 && Math.random() < 0.5) {
+        tone({ freq: pick(SCALE) / 2, dur: 0.9, type: 'triangle', vol: 0.25, at: 0, out: musicGain });
+      }
+    }
+  }
+
+  let voice = null, voiceLoaded = false;
+  function pickVoice() {
+    if (voiceLoaded) return;
+    try {
+      const vs = speechSynthesis.getVoices();
+      if (!vs.length) return;
+      voice = vs.find(v => /^(fil|tl)/i.test(v.lang)) || null;
+      voiceLoaded = true;
+    } catch (e) {}
+  }
+  try { speechSynthesis.addEventListener('voiceschanged', pickVoice); } catch (e) {}
+
+  return {
+    unlock() {
+      const c = ensureCtx();
+      try { if (c && c.state === 'suspended') c.resume(); } catch (e) {}
+      try { speechSynthesis.resume(); } catch (e) {}
+      pickVoice();
+    },
+    sfx(name) {
+      if (State.muted || !ensureCtx()) return;
+      try { SFX[name] && SFX[name](); } catch (e) {}
+    },
+    say(text) {
+      if (State.muted) return;
+      try {
+        pickVoice();
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = 0.9; u.pitch = 1.2; u.volume = 1;
+        if (voice) u.voice = voice;
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    },
+    music: {
+      start() {
+        if (musicTimer || !ensureCtx()) return;
+        scheduleBar();
+        musicTimer = setInterval(scheduleBar, 1700);
+      },
+      stop() { clearInterval(musicTimer); musicTimer = null; },
+    },
+    setMuted(b) {
+      State.muted = b;
+      try { localStorage.setItem('eya-muted', b ? '1' : '0'); } catch (e) {}
+      if (master) master.gain.value = b ? 0 : 1;
+      if (b) { try { speechSynthesis.cancel(); } catch (e) {} }
+    },
+  };
+})();
+
+// Mute button helper — scenes render this and call wireMuteButton().
+function muteButtonSVG() {
+  return `<g id="muteBtn" style="cursor:pointer">
+    <circle cx="1520" cy="80" r="52" fill="#ffffff" opacity="0.85"/>
+    <text id="muteIcon" x="1520" y="102" text-anchor="middle" font-size="56">${State.muted ? '🔇' : '🔊'}</text>
+  </g>`;
+}
+function wireMuteButton() {
+  const btn = $('#muteBtn');
+  if (!btn) return;
+  btn.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    Audio.setMuted(!State.muted);
+    $('#muteIcon').textContent = State.muted ? '🔇' : '🔊';
+    if (!State.muted) Audio.sfx('pop');
+  });
+}
 
 // ============================================================ ART — character rig
 // Coordinate system per character: origin at center of feet, head top ≈ y=-330.
