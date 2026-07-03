@@ -1111,7 +1111,7 @@ const WORLD_W = 4800;
 
 const PLACES = [
   { id: 'school', label: 'Paaralan', x: 3780, y: 430 },
-  { id: 'church', label: 'Simbahan', x: 4440, y: 450 },
+  { id: 'church', label: 'SOFT Church', x: 4440, y: 450 }, // Shepherds of Faith and Truth
 ];
 
 function schoolSVG(p) {
@@ -1168,8 +1168,9 @@ function churchSVG(p) {
       <circle r="9" fill="#fffaf2"/>
     </g>
     <g transform="translate(0 -262)">
-      <rect x="-140" y="-40" width="280" height="58" rx="12" fill="#fffaf2" stroke="#d9c9a8" stroke-width="4"/>
-      ${bigLabel(0, 4, '⛪ Simbahan', { size: 32, fill: '#6a4a2a', stroke: '#fffaf2' })}
+      <rect x="-150" y="-52" width="300" height="72" rx="12" fill="#fffaf2" stroke="#d9c9a8" stroke-width="4"/>
+      ${bigLabel(0, -18, '⛪ SOFT', { size: 32, fill: '#6a4a2a', stroke: '#fffaf2' })}
+      ${bigLabel(0, 10, 'Shepherds of Faith &amp; Truth', { size: 14, fill: '#8a6a4a', stroke: '#fffaf2' })}
     </g>
     <g class="doorwrap">
       <path d="M -46 0 L -46 -100 Q -46 -140 0 -140 Q 46 -140 46 -100 L 46 0 Z" fill="#6a4a32" opacity="0.35"/>
@@ -1248,6 +1249,7 @@ Scenes.map = {
           <stop offset="0" stop-color="#aee3f5"/><stop offset="1" stop-color="#dff5fd"/>
         </linearGradient>
       </defs>
+      <!-- fixed sky -->
       <rect id="mapGround0" width="1600" height="900" fill="url(#skyM)"/>
       <g class="deco" transform="translate(1340,118)">
         <g>${Array.from({ length: 12 }, (_, i) =>
@@ -1263,37 +1265,56 @@ Scenes.map = {
         <g><ellipse cx="760" cy="70" rx="66" ry="28"/>
           <animateTransform attributeName="transform" type="translate" values="0 0;-120 0;0 0" dur="44s" repeatCount="indefinite"/></g>
       </g>
-      <rect id="mapGround" x="0" y="240" width="1600" height="660" fill="#9edb7a"/>
-      <path d="M 0 240 Q 400 210 800 240 Q 1200 270 1600 240 L 1600 260 Q 1200 290 800 260 Q 400 230 0 260 Z" fill="#8bcf6b"/>
-      <!-- road loop -->
-      <path id="roadPath" d="M 250 460 Q 420 380 640 366 Q 835 352 1030 366 Q 1250 380 1390 460 Q 1420 540 1120 672 Q 820 740 520 672 Q 220 560 250 460 Z"
-        fill="none" stroke="#e5cda2" stroke-width="86" stroke-linejoin="round"/>
-      <path d="M 250 460 Q 420 380 640 366 Q 835 352 1030 366 Q 1250 380 1390 460 Q 1420 540 1120 672 Q 820 740 520 672 Q 220 560 250 460 Z"
-        fill="none" stroke="#fffaf2" stroke-width="6" stroke-dasharray="26 30" opacity="0.8"/>
-      ${MAP_DECOR}
-      ${HOUSES.map(houseSVG).join('')}
-      <g id="eyaWalk"></g>
+      <!-- scrolling world -->
+      <g id="world">
+        <rect id="mapGround" x="0" y="240" width="${WORLD_W}" height="660" fill="#9edb7a"/>
+        <path d="M 0 240 Q 400 210 800 240 Q 1200 270 1600 240 T 2400 240 T 3200 240 T ${WORLD_W} 240 L ${WORLD_W} 262 Q 3200 292 2400 262 T 800 262 T 0 262 Z" fill="#8bcf6b"/>
+        <!-- barangay road loop -->
+        <path id="roadPath" d="M 250 460 Q 420 380 640 366 Q 835 352 1030 366 Q 1250 380 1390 460 Q 1420 540 1120 672 Q 820 740 520 672 Q 220 560 250 460 Z"
+          fill="none" stroke="#e5cda2" stroke-width="86" stroke-linejoin="round"/>
+        <!-- road east to town -->
+        <path d="M 1388 460 Q 1800 430 2200 470 Q 2700 520 3100 500 Q 3600 470 ${WORLD_W} 520"
+          fill="none" stroke="#e5cda2" stroke-width="86" stroke-linecap="round"/>
+        <path d="M 250 460 Q 420 380 640 366 Q 835 352 1030 366 Q 1250 380 1390 460 Q 1420 540 1120 672 Q 820 740 520 672 Q 220 560 250 460 Z"
+          fill="none" stroke="#fffaf2" stroke-width="6" stroke-dasharray="26 30" opacity="0.8"/>
+        <path d="M 1388 460 Q 1800 430 2200 470 Q 2700 520 3100 500 Q 3600 470 ${WORLD_W} 520"
+          fill="none" stroke="#fffaf2" stroke-width="6" stroke-dasharray="26 30" opacity="0.8"/>
+        ${MAP_DECOR}
+        ${playgroundSVG(2950, 470)}
+        ${HOUSES.map(houseSVG).join('')}
+        ${schoolSVG(PLACES[0])}
+        ${churchSVG(PLACES[1])}
+        <g id="eyaWalk"></g>
+      </g>
       ${muteButtonSVG()}
       <g id="uiLayer"></g>
     `;
 
+    const world = $('#world');
     const eya = this.eya = makeWalker({
       g: $('#eyaWalk'), spec: effectiveEyaSpec(),
       x: spawn.x, y: spawn.y,
-      bounds: { minX: 60, maxX: 1540, minY: 360, maxY: 860 },
+      bounds: { minX: 60, maxX: WORLD_W - 60, minY: 360, maxY: 860 },
       scaleFn: y => clamp(0.42 + (y - 300) / 900 * 0.55, 0.42, 0.78),
       uiLayer: $('#uiLayer'),
+      toLocal: p => ({ x: p.x + this.camX, y: p.y }),
+      onMove: pos => {
+        this.camX = clamp(pos.x - 800, 0, WORLD_W - 1600);
+        world.setAttribute('transform', `translate(${-this.camX} 0)`);
+      },
     });
+    this.camX = 0;
+    eya.place(); // sets initial camera
     const walkTo = (tx, ty, done) => eya.walkTo(tx, ty, done);
     eya.attachGround($('#mapGround'));
 
-    // decorations wiggle
-    stage.querySelectorAll('.deco').forEach(el => {
+    // decorations wiggle (skip playground pieces — they have their own handlers)
+    world.querySelectorAll('.deco').forEach(el => {
       el.addEventListener('pointerdown', e => {
         e.stopPropagation();
         if (App.locked) return;
         const p = toStage(e.clientX, e.clientY);
-        walkTo(clamp(p.x, 60, 1540), clamp(p.y + 60, 360, 860));
+        walkTo(clamp(p.x + this.camX, 60, WORLD_W - 60), clamp(p.y + 60, 360, 860));
         Audio.sfx('pop');
         const base = el.getAttribute('transform') || '';
         tween(500, t => {
@@ -1302,33 +1323,77 @@ Scenes.map = {
       });
     });
 
-    // houses: walk to door, knock, "Tao po!", door opens, enter
-    stage.querySelectorAll('.house').forEach(el => {
+    // playground interactive pieces
+    this.wirePlayground(world, eya);
+
+    // door sequence shared by houses (data-house) and places (data-place)
+    const enterViaDoor = (el, doorX, doorY, target, spawnBack) => {
+      walkTo(doorX, doorY, () => {
+        App.locked = true;
+        Audio.sfx('knock');
+        setTimeout(() => Audio.say('Tao po!'), 350);
+        const door = el.querySelector('.door');
+        setTimeout(() => {
+          tween(450, t => {
+            const k = Math.max(0.12, Math.cos(t * 1.35));
+            door.setAttribute('transform', `translate(-42 0) scale(${k} 1) translate(42 0)`);
+          });
+          Audio.sfx('chime');
+        }, 1050);
+        setTimeout(() => {
+          State.mapSpawn = spawnBack;
+          App.locked = false;
+          App.go(target);
+        }, 1700);
+      });
+    };
+
+    world.querySelectorAll('.house[data-house]').forEach(el => {
       el.addEventListener('pointerdown', e => {
         e.stopPropagation();
         if (App.locked) return;
         const h = HOUSES.find(x => x.id === el.dataset.house);
-        walkTo(h.x + 70, h.y + 34, () => {
-          App.locked = true;
-          Audio.sfx('knock');
-          setTimeout(() => Audio.say('Tao po!'), 350);
-          const door = el.querySelector('.door');
-          setTimeout(() => {
-            tween(450, t => {
-              const k = Math.max(0.12, Math.cos(t * 1.35)); // swing around left hinge
-              door.setAttribute('transform', `translate(-42 0) scale(${k} 1) translate(42 0)`);
-            });
-            Audio.sfx('chime');
-          }, 1050);
-          setTimeout(() => {
-            State.mapSpawn = { x: h.x + 70, y: h.y + 34 };
-            App.locked = false;
-            App.go('house:' + h.id);
-          }, 1700);
-        });
+        enterViaDoor(el, h.x + 70, h.y + 34, 'house:' + h.id, { x: h.x + 70, y: h.y + 34 });
       });
     });
 
+    world.querySelectorAll('.house[data-place]').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        if (App.locked) return;
+        const pl = PLACES.find(x => x.id === el.dataset.place);
+        const doorX = pl.id === 'school' ? pl.x + 90 : pl.x;
+        enterViaDoor(el, doorX, pl.y + 34, 'place:' + pl.id, { x: doorX, y: pl.y + 34 });
+      });
+    });
+
+    wireMuteButton();
+  },
+  wirePlayground(world, eya) {},   // filled in by the playground task
+  exit() {
+    if (this.eya) { this.eya.destroy(); this.eya = null; }
+  }
+};
+
+// placeholder playground art until the playground task fills it in
+function playgroundSVG(x, y) {
+  return `<g id="playground" transform="translate(${x} ${y})"></g>`;
+}
+
+// ============================================================ PLACE SCENES (playground/school/church share this)
+Scenes.place = {
+  enter(id) {
+    const pl = PLACES.find(p => p.id === id) || { label: id };
+    stage.innerHTML = `
+      <rect width="1600" height="900" fill="#e8f4ea"/>
+      ${bigLabel(800, 460, pl.label, { size: 70, fill: '#4a8a5a', stroke: '#fff' })}
+      <g id="homeBtn" style="cursor:pointer">
+        <circle cx="92" cy="806" r="58" fill="#fff" opacity="0.9"/>
+        <text x="92" y="830" text-anchor="middle" font-size="58">🏠</text>
+      </g>
+      ${muteButtonSVG()}
+    `;
+    $('#homeBtn').addEventListener('pointerdown', e => { e.stopPropagation(); App.go('map'); });
     wireMuteButton();
   },
   exit() {
@@ -1997,12 +2062,13 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// #lineup, #map, #house-<id>, #dressup are debug entry points
+// #lineup, #map, #house-<id>, #place-<id>, #dressup are debug entry points
 const dbg = location.hash.slice(1);
 App.go(dbg === 'lineup' ? 'lineup'
   : dbg === 'map' ? 'map'
   : dbg === 'dressup' ? 'dressup'
   : dbg.startsWith('house-') ? 'house:' + dbg.slice(6)
+  : dbg.startsWith('place-') ? 'place:' + dbg.slice(6)
   : 'title');
 </script>
 </body>
