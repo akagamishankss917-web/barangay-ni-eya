@@ -1619,24 +1619,271 @@ function playgroundSVG() {
   </g>`;
 }
 
-// ============================================================ PLACE SCENES (playground/school/church share this)
+// ============================================================ PLACE SCENES (school + SOFT church)
+const INTERIOR_BOUNDS = { minX: 120, maxX: 1480, minY: 640, maxY: 865 };
+const interiorScale = y => 0.5 + (y - 640) / 225 * 0.2;
+
 Scenes.place = {
   enter(id) {
-    const pl = PLACES.find(p => p.id === id) || { label: id };
+    if (id === 'school') this.enterSchool();
+    else if (id === 'church') this.enterChurch();
+    else App.go('map');
+  },
+
+  // ---- shared: spawn Eya walker + home button + mute, return the walker
+  finishRoom() {
+    const eya = this.eya = makeWalker({
+      g: $('#eyaWalkP'), spec: effectiveEyaSpec(),
+      x: 200, y: 820, bounds: INTERIOR_BOUNDS, scaleFn: interiorScale,
+      uiLayer: $('#uiLayerP'),
+    });
+    eya.attachGround($('#roomGround'));
+    $('#homeBtn').addEventListener('pointerdown', e => { e.stopPropagation(); App.go('map'); });
+    wireMuteButton();
+    return eya;
+  },
+
+  // person that Eya walks up to, then waves + speaks
+  wirePerson(el, x, y, line) {
+    el.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      this.eya.approach(x, y, 190, () => {
+        waveCharacter(el);
+        Audio.sfx('chime');
+        Audio.say(line);
+      });
+    });
+  },
+
+  // ============ SCHOOL ============
+  enterSchool() {
+    const deskSVG = (x, y) => `
+      <g transform="translate(${x} ${y})">
+        <rect x="-58" y="-6" width="116" height="16" rx="5" fill="#c98a4a"/>
+        <rect x="-50" y="8" width="12" height="54" fill="#a87c4a"/>
+        <rect x="38" y="8" width="12" height="54" fill="#a87c4a"/>
+        <rect x="-58" y="-20" width="116" height="16" rx="6" fill="#e0a860"/>
+      </g>`;
     stage.innerHTML = `
-      <rect width="1600" height="900" fill="#e8f4ea"/>
-      ${bigLabel(800, 460, pl.label, { size: 70, fill: '#4a8a5a', stroke: '#fff' })}
+      <rect width="1600" height="640" fill="#fdf3e0"/>
+      <rect y="600" width="1600" height="300" fill="#d9b48a"/>
+      ${Array.from({ length: 5 }, (_, i) => `<line x1="0" y1="${660 + i * 50}" x2="1600" y2="${660 + i * 50}" stroke="#c9a276" stroke-width="3"/>`).join('')}
+      <rect y="590" width="1600" height="18" fill="#c49a6a"/>
+      <!-- blackboard -->
+      <g transform="translate(640 250)">
+        <rect x="-300" y="-150" width="600" height="270" rx="14" fill="#5a4632"/>
+        <rect x="-282" y="-132" width="564" height="234" rx="8" fill="#2f6b52"/>
+        ${bigLabel(0, -30, 'A  B  C', { size: 92, fill: '#fdf6e8', stroke: '#2f6b52' })}
+        ${bigLabel(0, 66, '1  2  3', { size: 60, fill: '#ffe6a8', stroke: '#2f6b52' })}
+      </g>
+      <!-- alphabet chart -->
+      <g transform="translate(1330 250)">
+        <rect x="-110" y="-140" width="220" height="270" rx="12" fill="#fffaf2" stroke="#e0c9a8" stroke-width="5"/>
+        ${['🍎', '🐝', '🐱', '🐶'].map((em, i) => `<text x="${-55 + (i % 2) * 110}" y="${-70 + Math.floor(i / 2) * 120}" text-anchor="middle" font-size="64">${em}</text>`).join('')}
+      </g>
+      <!-- windows -->
+      <g transform="translate(180 240)">
+        <rect x="-96" y="-96" width="192" height="176" rx="12" fill="#fffaf2"/>
+        <rect x="-84" y="-84" width="168" height="152" rx="8" fill="#aee3f5"/>
+        <circle cx="46" cy="-40" r="20" fill="#ffe066"/>
+        <line x1="0" y1="-84" x2="0" y2="68" stroke="#fffaf2" stroke-width="8"/>
+        <line x1="-84" y1="-8" x2="84" y2="-8" stroke="#fffaf2" stroke-width="8"/>
+      </g>
+      <!-- reading mat -->
+      <ellipse cx="470" cy="835" rx="150" ry="42" fill="#f4a6c0" data-mat="1" style="cursor:pointer"/>
+      <ellipse cx="470" cy="835" rx="110" ry="28" fill="#f8c8d8"/>
+      ${deskSVG(1150, 792)}
+      ${deskSVG(1380, 818)}
+      <rect id="roomGround" width="1600" height="900" fill="#000" opacity="0"/>
+      <g id="matHit"><ellipse cx="470" cy="835" rx="150" ry="42" fill="#000" opacity="0" data-mat="1" style="cursor:pointer"/></g>
+      <g id="peopleLayer"></g>
+      <g id="propLayer"></g>
+      <g id="eyaWalkP"></g>
+      <g id="fxLayer"></g>
       <g id="homeBtn" style="cursor:pointer">
         <circle cx="92" cy="806" r="58" fill="#fff" opacity="0.9"/>
         <text x="92" y="830" text-anchor="middle" font-size="58">🏠</text>
       </g>
       ${muteButtonSVG()}
+      <g id="uiLayerP"></g>
     `;
-    $('#homeBtn').addEventListener('pointerdown', e => { e.stopPropagation(); App.go('map'); });
-    wireMuteButton();
+
+    // people
+    const people = [
+      { key: 'teacher', x: 300, y: 720, s: 0.78, face: 1, line: 'Good morning, Eya!' },
+      { key: 'rachel', x: 780, y: 810, s: 0.62, face: 1, line: 'Hi Eya!' },
+      { key: 'kidA', x: 1150, y: 802, s: 0.52, face: -1, line: 'Miko' },
+      { key: 'kidB', x: 1380, y: 828, s: 0.52, face: -1, line: 'Lia' },
+    ];
+    $('#peopleLayer').innerHTML = people.map(p =>
+      `<g class="person" data-key="${p.key}" style="cursor:pointer">${
+        buildCharacter(CHARACTERS[p.key], { x: p.x, y: p.y, scale: p.s, idle: true, facing: p.face })
+      }</g>`).join('');
+
+    const eya = this.finishRoom();
+
+    people.forEach(p => this.wirePerson($(`.person[data-key="${p.key}"]`), p.x, p.y, p.line));
+
+    // props: bell + ABC blocks + drawing easel
+    $('#propLayer').innerHTML = `
+      <g data-prop="bell" transform="translate(470 720)" style="cursor:pointer">
+        <path d="M -34 20 Q -34 -34 0 -34 Q 34 -34 34 20 Z" fill="#f2c94c" stroke="#d9a834" stroke-width="4"/>
+        <rect x="-6" y="-46" width="12" height="16" rx="4" fill="#a87c4a"/>
+        <ellipse cx="0" cy="22" rx="40" ry="8" fill="#e8b13a"/>
+        <circle cx="0" cy="26" r="7" fill="#8a6242"/>
+      </g>
+      <g data-prop="blockE" transform="translate(600 850)" style="cursor:pointer">${PROP_ART.block('E', '#8ecae6')}</g>
+      <g data-prop="blockY" transform="translate(690 862)" style="cursor:pointer">${PROP_ART.block('Y', '#9edb7a')}</g>
+      <g data-prop="blockA" transform="translate(780 850)" style="cursor:pointer">${PROP_ART.block('A', '#ffb347')}</g>
+      <g data-prop="easel" transform="translate(1050 770)" style="cursor:pointer">
+        <line x1="-46" y1="120" x2="-18" y2="-70" stroke="#a87c4a" stroke-width="10"/>
+        <line x1="46" y1="120" x2="18" y2="-70" stroke="#a87c4a" stroke-width="10"/>
+        <line x1="0" y1="120" x2="0" y2="20" stroke="#a87c4a" stroke-width="10"/>
+        <rect x="-70" y="-90" width="140" height="150" rx="6" fill="#fffaf2" stroke="#c9a276" stroke-width="6"/>
+        <path d="M -34 8 Q -6 42 22 8" stroke="#ff8fb5" stroke-width="7" fill="none" stroke-linecap="round"/>
+        <circle cx="-30" cy="-40" r="16" fill="#ffe066"/>
+      </g>`;
+
+    const letters = { blockE: 'E', blockY: 'Y', blockA: 'A' };
+    Object.keys(letters).forEach(id => {
+      const el = $(`[data-prop="${id}"]`);
+      const bx = +el.getAttribute('transform').match(/translate\(([-\d.]+)/)[1];
+      el.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        eya.approach(bx, 850, 150, () => {
+          Audio.sfx('pop'); Audio.say(letters[id]);
+          const base = el.getAttribute('transform');
+          tween(500, t => el.setAttribute('transform', `${base} scale(${1 + Math.sin(t * Math.PI * 3) * 0.14 * (1 - t)})`),
+            () => el.setAttribute('transform', base));
+        });
+      });
+    });
+
+    // bell → everyone cheers "Recess na!"
+    $('[data-prop="bell"]').addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      eya.approach(470, 730, 170, () => {
+        Audio.sfx('bell');
+        stage.querySelectorAll('.person').forEach(pel => waveCharacter(pel));
+        setTimeout(() => Audio.say('Recess na!'), 300);
+      });
+    });
+
+    // story time on the mat
+    stage.querySelectorAll('[data-mat="1"]').forEach(mat => {
+      mat.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        this.storyTime();
+      });
+    });
+
+    // drawing easel
+    $('[data-prop="easel"]').addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      eya.approach(1050, 800, 200, () => this.openDrawing());
+    });
   },
+
+  storyTime() {
+    if (App.locked) return;
+    this.eya.approach(470, 815, 120, () => {
+      App.locked = true;
+      const fx = $('#fxLayer');
+      fx.innerHTML = `
+        <g id="storyBook" transform="translate(800 470)" opacity="0">
+          <rect x="-210" y="-150" width="420" height="300" rx="16" fill="#8a5f3c"/>
+          <rect x="-198" y="-138" width="196" height="276" rx="8" fill="#fffaf2"/>
+          <rect x="2" y="-138" width="196" height="276" rx="8" fill="#fffaf2"/>
+          <line x1="0" y1="-138" x2="0" y2="138" stroke="#d9c9a8" stroke-width="4"/>
+          <text x="-100" y="-40" text-anchor="middle" font-size="80">🌞</text>
+          <text id="storyPic" x="100" y="-30" text-anchor="middle" font-size="80">🐣</text>
+          ${bigLabel(-100, 90, 'A B C', { size: 40, fill: '#e8709c', stroke: '#fff' })}
+        </g>`;
+      const book = $('#storyBook');
+      tween(300, t => book.setAttribute('opacity', t));
+      const pics = ['🐣', '🌸', '🦋', '⭐'];
+      let i = 0;
+      const flip = () => {
+        i++;
+        Audio.sfx('pageflip');
+        $('#storyPic').textContent = pics[i % pics.length];
+        if (i < 3) setTimeout(flip, 1200);
+        else setTimeout(() => {
+          tween(300, t => book.setAttribute('opacity', 1 - t), () => { fx.innerHTML = ''; App.locked = false; });
+        }, 1200);
+      };
+      setTimeout(flip, 1000);
+    });
+  },
+
+  openDrawing() {
+    const colors = ['#e05a6a', '#4a90d9', '#ffd94d', '#9edb7a'];
+    let color = colors[0];
+    const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    overlay.setAttribute('id', 'drawOverlay');
+    overlay.innerHTML = `
+      <rect width="1600" height="900" fill="#2a2a30" opacity="0.4"/>
+      <rect x="200" y="120" width="1200" height="660" rx="18" fill="#fffaf2" id="drawPaper" style="cursor:crosshair"/>
+      <g id="inkLayer" pointer-events="none"></g>
+      ${colors.map((c, i) => `<circle class="crayon" data-c="${c}" cx="${260 + i * 90}" cy="820" r="34" fill="${c}" stroke="${c === color ? '#2a2a30' : '#fff'}" stroke-width="5" style="cursor:pointer"/>`).join('')}
+      <g id="eraseBtn" style="cursor:pointer"><circle cx="${260 + 4 * 90}" cy="820" r="34" fill="#fff" stroke="#c9c9d2" stroke-width="5"/><text x="${260 + 4 * 90}" y="834" text-anchor="middle" font-size="34">🧽</text></g>
+      <g id="drawDone" style="cursor:pointer"><circle cx="1340" cy="820" r="40" fill="#9edb7a" stroke="#fff" stroke-width="6"/><path d="M 1322 820 L 1335 834 L 1360 806" stroke="#fff" stroke-width="9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+    stage.appendChild(overlay);
+    const paper = $('#drawPaper'), ink = $('#inkLayer');
+    let drawing = false, pts = [], line = null;
+    const start = e => {
+      drawing = true; pts = []; Audio.sfx('pop');
+      line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+      line.setAttribute('fill', 'none'); line.setAttribute('stroke', color);
+      line.setAttribute('stroke-width', '12'); line.setAttribute('stroke-linecap', 'round');
+      line.setAttribute('stroke-linejoin', 'round');
+      ink.appendChild(line);
+      add(e);
+    };
+    const add = e => {
+      const p = toStage(e.clientX, e.clientY);
+      pts.push(`${p.x.toFixed(0)},${p.y.toFixed(0)}`);
+      line.setAttribute('points', pts.join(' '));
+    };
+    const move = e => { if (drawing) add(e); };
+    const end = () => { drawing = false; };
+    paper.addEventListener('pointerdown', start);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', end);
+    overlay.querySelectorAll('.crayon').forEach(cr => cr.addEventListener('pointerdown', e => {
+      e.stopPropagation(); color = cr.dataset.c; Audio.sfx('sparkle');
+      overlay.querySelectorAll('.crayon').forEach(o => o.setAttribute('stroke', o.dataset.c === color ? '#2a2a30' : '#fff'));
+    }));
+    $('#eraseBtn').addEventListener('pointerdown', e => { e.stopPropagation(); ink.innerHTML = ''; Audio.sfx('boing'); });
+    $('#drawDone').addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
+      Audio.sfx('chime');
+      overlay.remove();
+    });
+  },
+
+  // ============ CHURCH (SOFT) ============
+  enterChurch() {
+    stage.innerHTML = `
+      <rect width="1600" height="900" fill="#f6ead2"/>
+      ${bigLabel(800, 460, 'SOFT Church', { size: 60, fill: '#8a6a3a', stroke: '#fff' })}
+      <rect id="roomGround" width="1600" height="900" fill="#000" opacity="0"/>
+      <g id="eyaWalkP"></g>
+      <g id="homeBtn" style="cursor:pointer">
+        <circle cx="92" cy="806" r="58" fill="#fff" opacity="0.9"/>
+        <text x="92" y="830" text-anchor="middle" font-size="58">🏠</text>
+      </g>
+      ${muteButtonSVG()}
+      <g id="uiLayerP"></g>
+    `;
+    this.finishRoom();
+  },
+
   exit() {
     if (this.eya) { this.eya.destroy(); this.eya = null; }
+    App.locked = false;
   }
 };
 
