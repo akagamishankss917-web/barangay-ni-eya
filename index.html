@@ -111,7 +111,386 @@ const Audio = {
   setMuted(b) { State.muted = b; },
 };
 
-// ============================================================ ART (character rig arrives in Task 2)
+// ============================================================ ART — character rig
+// Coordinate system per character: origin at center of feet, head top ≈ y=-330.
+// Same face geometry for everyone; female full-hair styles overlay a hair ring
+// with a skin "face window" so features sit at identical coordinates.
+
+const FACE = { eyeY: -256, eyeX: 24, mouthY: -230, browY: -278, blushY: -238, blushX: 40 };
+
+function hairBack(spec) {
+  const hc = spec.hairColor;
+  switch (spec.hair) {
+    case 'pigtails':
+      return `<circle cx="-80" cy="-238" r="26" fill="${hc}"/>
+              <circle cx="80" cy="-238" r="26" fill="${hc}"/>
+              <circle cx="-80" cy="-260" r="7" fill="#ffb0c8"/>
+              <circle cx="80" cy="-260" r="7" fill="#ffb0c8"/>`;
+    case 'longStraight':
+      return `<path d="M -70 -270 Q -78 -160 -64 -120 L -30 -130 L -40 -230 L 40 -230 L 30 -130 L 64 -120 Q 78 -160 70 -270 Z" fill="${hc}"/>`;
+    case 'longWavy':
+      return `<path d="M -70 -270 Q -84 -200 -70 -170 Q -80 -140 -62 -112 L -30 -128 L -40 -230 L 40 -230 L 30 -128 L 62 -112 Q 80 -140 70 -170 Q 84 -200 70 -270 Z" fill="${hc}"/>
+              <circle cx="-64" cy="-118" r="14" fill="${hc}"/><circle cx="64" cy="-118" r="14" fill="${hc}"/>`;
+    case 'shoulderBob':
+      return `<path d="M -72 -270 Q -80 -190 -62 -168 Q -30 -152 0 -152 Q 30 -152 62 -168 Q 80 -190 72 -270 Z" fill="${hc}"/>`;
+    case 'ponytail':
+      return `<circle cx="62" cy="-300" r="20" fill="${hc}"/>
+              <path d="M 62 -300 Q 92 -260 78 -190 Q 70 -168 60 -186 Q 70 -250 52 -290 Z" fill="${hc}"/>
+              <circle cx="58" cy="-296" r="7" fill="#e8b13a"/>`;
+    default: return '';
+  }
+}
+
+function hairFront(spec) {
+  const hc = spec.hairColor;
+  const fullHair = ['pigtails', 'longStraight', 'longWavy', 'shoulderBob', 'ponytail'].includes(spec.hair);
+  if (fullHair) {
+    // hair ring + face window (fringe all around)
+    return `<circle cx="0" cy="-258" r="71" fill="${hc}"/>
+            <ellipse cx="0" cy="-244" rx="54" ry="50" fill="${spec.skin}"/>`;
+  }
+  switch (spec.hair) {
+    case 'shortSpiky':
+      return `<path d="M -64 -268 A 66 66 0 0 1 64 -268 L 62 -256 Q 44 -270 40 -262 Q 20 -278 12 -266 Q -6 -280 -16 -266 Q -36 -276 -44 -262 Q -58 -268 -62 -254 Z" fill="${hc}"/>
+              <path d="M -50 -308 L -40 -326 L -32 -308 Z" fill="${hc}"/>
+              <path d="M -18 -316 L -8 -334 L 0 -314 Z" fill="${hc}"/>
+              <path d="M 14 -316 L 24 -332 L 32 -312 Z" fill="${hc}"/>
+              <path d="M 42 -306 L 52 -320 L 58 -302 Z" fill="${hc}"/>`;
+    case 'shortNeat':
+      return `<path d="M -65 -262 A 66 66 0 0 1 65 -262 L 64 -252 Q 30 -272 -10 -268 Q -46 -264 -64 -248 Z" fill="${hc}"/>`;
+    case 'swept':
+      return `<path d="M -65 -262 A 66 66 0 0 1 65 -262 L 64 -240 Q 56 -262 34 -266 Q 54 -280 30 -290 Q -6 -302 -38 -288 Q -62 -276 -64 -246 Z" fill="${hc}"/>
+              <path d="M -60 -282 Q -20 -306 24 -294 Q 44 -288 50 -276 Q 20 -290 -16 -284 Q -44 -278 -58 -266 Z" fill="${hc}"/>`;
+    default: return '';
+  }
+}
+
+function drawGlasses(spec) {
+  if (!spec.glasses) return '';
+  const { eyeX, eyeY } = FACE;
+  if (spec.glasses === 'round')
+    return `<g stroke="#5a4632" stroke-width="5" fill="none">
+      <circle cx="-${eyeX}" cy="${eyeY}" r="19"/><circle cx="${eyeX}" cy="${eyeY}" r="19"/>
+      <line x1="-5" y1="${eyeY - 4}" x2="5" y2="${eyeY - 4}"/></g>`;
+  if (spec.glasses === 'rect')
+    return `<g stroke="#5a4632" stroke-width="5" fill="none">
+      <rect x="-${eyeX + 20}" y="${eyeY - 16}" width="40" height="32" rx="10"/>
+      <rect x="${eyeX - 20}" y="${eyeY - 16}" width="40" height="32" rx="10"/>
+      <line x1="-4" y1="${eyeY - 6}" x2="4" y2="${eyeY - 6}"/></g>`;
+  // sun
+  return `<g><rect x="-${eyeX + 21}" y="${eyeY - 15}" width="42" height="30" rx="12" fill="#2c2c34"/>
+    <rect x="${eyeX - 21}" y="${eyeY - 15}" width="42" height="30" rx="12" fill="#2c2c34"/>
+    <line x1="-4" y1="${eyeY - 6}" x2="4" y2="${eyeY - 6}" stroke="#2c2c34" stroke-width="5"/>
+    <circle cx="-${eyeX + 8}" cy="${eyeY - 6}" r="4" fill="#6a6a78"/><circle cx="${eyeX - 8}" cy="${eyeY - 6}" r="4" fill="#6a6a78"/></g>`;
+}
+
+function drawMouth(spec) {
+  const y = FACE.mouthY;
+  switch (spec.smile) {
+    case 'open':
+      return `<path d="M -20 ${y - 4} Q 0 ${y + 26} 20 ${y - 4} Q 0 ${y + 4} -20 ${y - 4} Z" fill="#a04a52"/>
+              <ellipse cx="0" cy="${y + 12}" rx="9" ry="5" fill="#ff8fa0"/>`;
+    case 'braces': {
+      return `<path d="M -18 ${y - 4} Q 0 ${y + 22} 18 ${y - 4} Q 0 ${y + 2} -18 ${y - 4} Z" fill="#a04a52"/>
+              <path d="M -13 ${y - 1} Q 0 ${y + 7} 13 ${y - 1}" stroke="#fff" stroke-width="6" fill="none" stroke-linecap="round"/>
+              <path d="M -13 ${y - 1} Q 0 ${y + 7} 13 ${y - 1}" stroke="#9ad1e8" stroke-width="2.5" fill="none" stroke-dasharray="3 4"/>`;
+    }
+    case 'grin':
+      return `<path d="M -22 ${y - 8} Q 0 ${y + 16} 22 ${y - 8}" stroke="#8c4a4a" stroke-width="7" fill="none" stroke-linecap="round"/>`;
+    case 'soft':
+    default: {
+      const lips = spec.lips
+        ? `<path d="M -14 ${y - 2} Q -7 ${y - 8} 0 ${y - 2} Q 7 ${y - 8} 14 ${y - 2} Q 7 ${y + 10} 0 ${y + 8} Q -7 ${y + 10} -14 ${y - 2} Z" fill="${spec.lips}"/>`
+        : `<path d="M -13 ${y - 2} Q 0 ${y + 10} 13 ${y - 2}" stroke="#8c4a4a" stroke-width="6" fill="none" stroke-linecap="round"/>`;
+      return lips;
+    }
+  }
+}
+
+function drawHat(spec) {
+  switch (spec.hat) {
+    case 'tiara':
+      return `<g transform="translate(0,-316)">
+        <path d="M -34 6 L -34 -14 L -20 -2 L -8 -20 L 0 -4 L 8 -20 L 20 -2 L 34 -14 L 34 6 Q 0 14 -34 6 Z" fill="#f2c94c" stroke="#d9a834" stroke-width="3"/>
+        <circle cx="-20" cy="-8" r="3.5" fill="#fff"/><circle cx="0" cy="-12" r="4.5" fill="#ffd7e0"/><circle cx="20" cy="-8" r="3.5" fill="#fff"/></g>`;
+    case 'bow':
+      return `<g transform="translate(34,-318) rotate(18)">
+        <path d="M 0 0 L -24 -14 Q -30 0 -24 14 Z" fill="#fff" stroke="#e0d0d8" stroke-width="2"/>
+        <path d="M 0 0 L 24 -14 Q 30 0 24 14 Z" fill="#fff" stroke="#e0d0d8" stroke-width="2"/>
+        <circle r="7" fill="#f0e0e8"/></g>`;
+    case 'sunhat':
+      return `<g transform="translate(0,-312)">
+        <ellipse cx="0" cy="6" rx="84" ry="18" fill="#f0d9a8"/>
+        <path d="M -46 4 Q -46 -34 0 -34 Q 46 -34 46 4 Z" fill="#f6e4bc"/>
+        <path d="M -46 -2 Q 0 8 46 -2" stroke="#ff8fb5" stroke-width="8" fill="none"/></g>`;
+    case 'partyhat':
+      return `<g transform="translate(0,-318)">
+        <path d="M -30 8 L 0 -58 L 30 8 Z" fill="#8ecae6"/>
+        <path d="M -21 -12 L 21 -12 L 26 0 L -26 0 Z" fill="#ffd94d"/>
+        <circle cx="0" cy="-58" r="9" fill="#ff8fb5"/></g>`;
+    default: return '';
+  }
+}
+
+function drawTop(spec) {
+  const t = spec.top, c = t.color;
+  switch (t.type) {
+    case 'dress': {
+      const collar = t.collar ? `
+        <path d="M -30 -190 L 0 -170 L -38 -158 Q -44 -176 -30 -190 Z" fill="${t.collar}"/>
+        <path d="M 30 -190 L 0 -170 L 38 -158 Q 44 -176 30 -190 Z" fill="${t.collar}"/>
+        <circle cx="0" cy="-170" r="8" fill="${t.collar}" stroke="#e8d8e0" stroke-width="2"/>` : '';
+      return `<path d="M -38 -195 L 38 -195 L 64 -58 Q 0 -40 -64 -58 Z" fill="${c}"/>
+              <circle cx="0" cy="-140" r="4" fill="#fff" opacity="0.8"/>
+              <circle cx="0" cy="-115" r="4" fill="#fff" opacity="0.8"/>
+              ${collar}`;
+    }
+    case 'baroSaya': // Filipiniana: white butterfly-sleeve top + colored skirt
+      return `<path d="M -38 -195 L 38 -195 L 44 -120 L -44 -120 Z" fill="#fffaf2"/>
+              <path d="M -38 -195 Q -70 -200 -66 -168 Q -52 -160 -40 -172 Z" fill="#fffaf2"/>
+              <path d="M 38 -195 Q 70 -200 66 -168 Q 52 -160 40 -172 Z" fill="#fffaf2"/>
+              <path d="M -44 -122 L 44 -122 L 66 -52 Q 0 -36 -66 -52 Z" fill="${c}"/>
+              <path d="M -60 -66 Q 0 -50 60 -66" stroke="#f2c94c" stroke-width="5" fill="none"/>`;
+    case 'tshirt':
+      return `<rect x="-46" y="-196" width="92" height="100" rx="20" fill="${c}"/>
+              <path d="M -46 -186 L -76 -160 L -62 -138 L -44 -156 Z" fill="${c}"/>
+              <path d="M 46 -186 L 76 -160 L 62 -138 L 44 -156 Z" fill="${c}"/>
+              ${t.print || ''}`;
+    case 'polo':
+      return `<rect x="-46" y="-196" width="92" height="100" rx="20" fill="${c}"/>
+              <path d="M -46 -186 L -76 -160 L -62 -138 L -44 -156 Z" fill="${c}"/>
+              <path d="M 46 -186 L 76 -160 L 62 -138 L 44 -156 Z" fill="${c}"/>
+              <path d="M -16 -196 L 0 -176 L -22 -168 Z" fill="#e8e8ee"/>
+              <path d="M 16 -196 L 0 -176 L 22 -168 Z" fill="#e8e8ee"/>
+              <circle cx="0" cy="-160" r="3.5" fill="#b8b8c4"/><circle cx="0" cy="-142" r="3.5" fill="#b8b8c4"/>`;
+    case 'blouse':
+      return `<rect x="-48" y="-196" width="96" height="102" rx="20" fill="${c}"/>
+              <path d="M -48 -186 L -74 -158 L -60 -138 L -46 -156 Z" fill="${c}"/>
+              <path d="M 48 -186 L 74 -158 L 60 -138 L 46 -156 Z" fill="${c}"/>
+              <line x1="0" y1="-192" x2="0" y2="-96" stroke="#d8d8de" stroke-width="3"/>
+              <path d="M -14 -196 L 0 -180 L -18 -172 Z" fill="#eeeef2"/>
+              <path d="M 14 -196 L 0 -180 L 18 -172 Z" fill="#eeeef2"/>
+              <circle cx="0" cy="-166" r="3" fill="#c8c8d0"/><circle cx="0" cy="-146" r="3" fill="#c8c8d0"/><circle cx="0" cy="-126" r="3" fill="#c8c8d0"/>`;
+    case 'cami':
+      return `<path d="M -40 -178 L 40 -178 L 44 -96 L -44 -96 Z" fill="${c}"/>
+              <line x1="-34" y1="-178" x2="-24" y2="-196" stroke="${c}" stroke-width="7"/>
+              <line x1="34" y1="-178" x2="24" y2="-196" stroke="${c}" stroke-width="7"/>`;
+    case 'openShirt':
+      return `<rect x="-30" y="-192" width="60" height="96" rx="12" fill="#f4f4f6"/>
+              <path d="M -48 -196 L -18 -192 L -26 -94 L -50 -100 Z" fill="${c}"/>
+              <path d="M 48 -196 L 18 -192 L 26 -94 L 50 -100 Z" fill="${c}"/>
+              <path d="M -48 -186 L -78 -158 L -62 -136 L -46 -156 Z" fill="${c}"/>
+              <path d="M 48 -186 L 78 -158 L 62 -136 L 46 -156 Z" fill="${c}"/>`;
+    default: return `<rect x="-46" y="-196" width="92" height="100" rx="20" fill="${c}"/>`;
+  }
+}
+
+function drawBottom(spec) {
+  const isDress = ['dress', 'baroSaya'].includes(spec.top.type);
+  if (isDress || !spec.bottom) return '';
+  const b = spec.bottom, c = b.color;
+  switch (b.type) {
+    case 'shorts':
+      return `<path d="M -44 -100 L 44 -100 L 46 -52 L 8 -52 L 0 -74 L -8 -52 L -46 -52 Z" fill="${c}"/>`;
+    case 'pants':
+      return `<path d="M -44 -100 L 44 -100 L 40 -12 L 10 -12 L 4 -72 L -4 -72 L -10 -12 L -40 -12 Z" fill="${c}"/>`;
+    case 'skirt':
+      return `<path d="M -44 -100 L 44 -100 L 56 -50 Q 0 -38 -56 -50 Z" fill="${c}"/>`;
+    default: return '';
+  }
+}
+
+function drawShoes(spec) {
+  const s = spec.shoes, c = s.color;
+  const socks = spec.socks
+    ? `<rect x="-30" y="-46" width="20" height="26" rx="6" fill="#fff"/>
+       <rect x="10" y="-46" width="20" height="26" rx="6" fill="#fff"/>` : '';
+  switch (s.type) {
+    case 'maryjane':
+      return socks + `<g fill="${c}">
+        <path d="M -34 -20 Q -20 -28 -8 -20 L -6 -2 L -36 -2 Z"/>
+        <path d="M 34 -20 Q 20 -28 8 -20 L 6 -2 L 36 -2 Z"/></g>
+        <line x1="-32" y1="-16" x2="-10" y2="-16" stroke="#fff" stroke-width="3"/>
+        <line x1="32" y1="-16" x2="10" y2="-16" stroke="#fff" stroke-width="3"/>`;
+    case 'sneakers':
+      return socks + `<g>
+        <path d="M -36 -22 Q -18 -30 -6 -20 L -4 -2 L -38 -2 Z" fill="#fff"/>
+        <path d="M 36 -22 Q 18 -30 6 -20 L 4 -2 L 38 -2 Z" fill="#fff"/>
+        <path d="M -38 -8 L -4 -8 L -4 -2 L -38 -2 Z" fill="${c}"/>
+        <path d="M 38 -8 L 4 -8 L 4 -2 L 38 -2 Z" fill="${c}"/></g>`;
+    case 'tsinelas':
+      return `<g fill="${c}">
+        <ellipse cx="-20" cy="-6" rx="20" ry="8"/><ellipse cx="20" cy="-6" rx="20" ry="8"/></g>
+        <path d="M -28 -8 L -20 -16 L -12 -8" stroke="#fff" stroke-width="4" fill="none"/>
+        <path d="M 12 -8 L 20 -16 L 28 -8" stroke="#fff" stroke-width="4" fill="none"/>`;
+    case 'sandals':
+      return `<g fill="${c}">
+        <ellipse cx="-20" cy="-5" rx="19" ry="7"/><ellipse cx="20" cy="-5" rx="19" ry="7"/>
+        <line x1="-30" y1="-10" x2="-10" y2="-10" stroke="${c}" stroke-width="4"/>
+        <line x1="10" y1="-10" x2="30" y2="-10" stroke="${c}" stroke-width="4"/></g>`;
+    case 'party':
+      return socks + `<g fill="${c}">
+        <path d="M -34 -20 Q -20 -28 -8 -20 L -6 -2 L -36 -2 Z"/>
+        <path d="M 34 -20 Q 20 -28 8 -20 L 6 -2 L 36 -2 Z"/></g>
+        <circle cx="-21" cy="-20" r="5" fill="#ffd94d"/><circle cx="21" cy="-20" r="5" fill="#ffd94d"/>`;
+    case 'slipons':
+    default:
+      return socks + `<g fill="${c}">
+        <path d="M -36 -18 Q -20 -26 -6 -18 L -4 -2 L -38 -2 Z"/>
+        <path d="M 36 -18 Q 20 -26 6 -18 L 4 -2 L 38 -2 Z"/></g>`;
+  }
+}
+
+function drawArms(spec) {
+  const skin = spec.skin;
+  const sleeveless = ['cami', 'dress', 'baroSaya'].includes(spec.top.type);
+  const sleeve = sleeveless ? '' : null; // sleeves already drawn by top
+  const watch = spec.watch
+    ? `<rect x="-76" y="-118" width="16" height="10" rx="4" fill="${spec.watch === 'gold' ? '#e8b13a' : '#3a3a44'}"/>`
+    : '';
+  const necklace = spec.necklace
+    ? `<path d="M -18 -192 Q 0 -176 18 -192" stroke="#e8b13a" stroke-width="3" fill="none"/>
+       <circle cx="0" cy="-178" r="4" fill="#f2c94c"/>` : '';
+  return `
+    <g class="armL">
+      <line x1="-50" y1="-180" x2="-68" y2="-104" stroke="${skin}" stroke-width="20" stroke-linecap="round"/>
+      <circle cx="-68" cy="-100" r="12" fill="${skin}"/>
+      ${watch}
+    </g>
+    <g class="armR">
+      <line x1="50" y1="-180" x2="68" y2="-104" stroke="${skin}" stroke-width="20" stroke-linecap="round"/>
+      <circle cx="68" cy="-100" r="12" fill="${skin}"/>
+    </g>
+    ${necklace}`;
+}
+
+function buildCharacter(spec, opts = {}) {
+  const { x = 0, y = 0, scale = 1, facing = 1, idle = false, cls = '' } = opts;
+  const { eyeX, eyeY, browY, blushX, blushY } = FACE;
+  const earrings = spec.earrings
+    ? `<circle cx="-58" cy="-226" r="5" fill="#f2c94c"/><circle cx="58" cy="-226" r="5" fill="#f2c94c"/>` : '';
+  const bob = idle
+    ? `<animateTransform attributeName="transform" type="translate" values="0 0; 0 -5; 0 0" dur="2.2s" repeatCount="indefinite" additive="sum"/>` : '';
+  return `
+  <g class="${cls}" transform="translate(${x} ${y}) scale(${scale * facing} ${scale})">
+    <g>${bob}
+      ${hairBack(spec)}
+      <!-- legs -->
+      <rect x="-30" y="-60" width="20" height="46" rx="9" fill="${spec.skin}"/>
+      <rect x="10" y="-60" width="20" height="46" rx="9" fill="${spec.skin}"/>
+      ${drawShoes(spec)}
+      ${drawBottom(spec)}
+      ${drawArms(spec)}
+      ${drawTop(spec)}
+      <!-- neck + head -->
+      <rect x="-12" y="-216" width="24" height="26" fill="${spec.skin}"/>
+      <circle cx="0" cy="-252" r="66" fill="${spec.skin}"/>
+      ${hairFront(spec)}
+      ${earrings}
+      <!-- face -->
+      <circle cx="-${eyeX}" cy="${eyeY}" r="7.5" fill="#241812"/>
+      <circle cx="${eyeX}" cy="${eyeY}" r="7.5" fill="#241812"/>
+      <circle cx="-${eyeX - 2.5}" cy="${eyeY - 2.5}" r="2.5" fill="#fff"/>
+      <circle cx="${eyeX + 2.5}" cy="${eyeY - 2.5}" r="2.5" fill="#fff"/>
+      <path d="M -${eyeX + 12} ${browY} Q -${eyeX} ${browY - 7} -${eyeX - 12} ${browY}" stroke="${spec.hairColor}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      <path d="M ${eyeX - 12} ${browY} Q ${eyeX} ${browY - 7} ${eyeX + 12} ${browY}" stroke="${spec.hairColor}" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+      <ellipse cx="-${blushX}" cy="${blushY}" rx="10" ry="6" fill="#ff9eb0" opacity="0.45"/>
+      <ellipse cx="${blushX}" cy="${blushY}" rx="10" ry="6" fill="#ff9eb0" opacity="0.45"/>
+      ${drawMouth(spec)}
+      ${drawGlasses(spec)}
+      ${drawHat(spec)}
+    </g>
+  </g>`;
+}
+
+// Head-only portrait for house signboards.
+function buildFace(spec, opts = {}) {
+  const { x = 0, y = 0, scale = 1 } = opts;
+  const { eyeX, eyeY } = FACE;
+  return `
+  <g transform="translate(${x} ${y + 252 * scale}) scale(${scale})">
+    ${hairBack(spec)}
+    <circle cx="0" cy="-252" r="66" fill="${spec.skin}"/>
+    ${hairFront(spec)}
+    <circle cx="-${eyeX}" cy="${eyeY}" r="7.5" fill="#241812"/>
+    <circle cx="${eyeX}" cy="${eyeY}" r="7.5" fill="#241812"/>
+    <circle cx="-${eyeX - 2.5}" cy="${eyeY - 2.5}" r="2.5" fill="#fff"/>
+    <circle cx="${eyeX + 2.5}" cy="${eyeY - 2.5}" r="2.5" fill="#fff"/>
+    <ellipse cx="-${FACE.blushX}" cy="${FACE.blushY}" rx="10" ry="6" fill="#ff9eb0" opacity="0.45"/>
+    <ellipse cx="${FACE.blushX}" cy="${FACE.blushY}" rx="10" ry="6" fill="#ff9eb0" opacity="0.45"/>
+    ${drawMouth(spec)}
+    ${drawGlasses(spec)}
+    ${drawHat(spec)}
+  </g>`;
+}
+
+// Wave animation: rotate the right arm up and back a few times.
+function waveCharacter(gEl) {
+  const arm = gEl.querySelector('.armR');
+  if (!arm) return;
+  tween(1200, t => {
+    const a = -70 * Math.abs(Math.sin(t * Math.PI * 3)) * (1 - t * 0.2);
+    arm.setAttribute('transform', `rotate(${a} 50 -180)`);
+  }, () => arm.setAttribute('transform', ''));
+}
+
+// ---- The family (anchors from the photo folders)
+const CHARACTERS = {
+  eya: {
+    label: 'Eya', skin: '#f7cfa8', hairColor: '#241812', hair: 'pigtails',
+    hat: 'tiara', smile: 'open', socks: true,
+    top: { type: 'dress', color: '#f8bcd2', collar: '#fffaf2' },
+    bottom: null, shoes: { type: 'maryjane', color: '#2a2a30' },
+  },
+  mommy: {
+    label: 'Mommy Kristine', skin: '#f2c9a4', hairColor: '#241812', hair: 'longStraight',
+    glasses: 'rect', smile: 'braces',
+    top: { type: 'tshirt', color: '#fbfbfd' },
+    bottom: { type: 'pants', color: '#2e2e36' }, shoes: { type: 'slipons', color: '#e8e0d8' },
+  },
+  daddy: {
+    label: 'Daddy Laurence', skin: '#e2ab7f', hairColor: '#1c1410', hair: 'shortSpiky',
+    smile: 'grin', watch: 'gold',
+    top: { type: 'tshirt', color: '#fbfbfd' },
+    bottom: { type: 'shorts', color: '#26262e' }, shoes: { type: 'slipons', color: '#6b4a36' },
+  },
+  lola: {
+    label: 'Lola Andak', skin: '#e8b88e', hairColor: '#2a1c14', hair: 'shortNeat',
+    glasses: 'round', earrings: true, smile: 'grin',
+    top: { type: 'blouse', color: '#fbfbfd' },
+    bottom: { type: 'shorts', color: '#7ba7cc' }, shoes: { type: 'slipons', color: '#f0ece4' },
+  },
+  titoBoy: {
+    label: 'Tito Boy', skin: '#e2ab7f', hairColor: '#1c1410', hair: 'shortSpiky',
+    smile: 'grin', watch: 'dark',
+    top: { type: 'polo', color: '#fbfbfd' },
+    bottom: { type: 'pants', color: '#3c4250' }, shoes: { type: 'slipons', color: '#4a4a54' },
+  },
+  titaJoyce: {
+    label: 'Tita Joyce', skin: '#f2c9a4', hairColor: '#241812', hair: 'longWavy',
+    glasses: 'rect', smile: 'soft', lips: '#d94f5c',
+    top: { type: 'tshirt', color: '#fbfbfd' },
+    bottom: { type: 'shorts', color: '#6f9cc4' }, shoes: { type: 'sandals', color: '#c9a888' },
+  },
+  titaKath: {
+    label: 'Tita Kath', skin: '#f2c9a4', hairColor: '#6b4423', hair: 'shoulderBob',
+    smile: 'open',
+    top: { type: 'cami', color: '#fbfbfd' },
+    bottom: { type: 'shorts', color: '#88aacc' }, shoes: { type: 'sneakers', color: '#ff8fb5' },
+  },
+  auntie: {
+    label: 'Auntie', skin: '#f2c9a4', hairColor: '#241812', hair: 'ponytail',
+    smile: 'soft', necklace: true,
+    top: { type: 'cami', color: '#fffaf2' },
+    bottom: { type: 'skirt', color: '#d8c7b0' }, shoes: { type: 'sandals', color: '#b09070' },
+  },
+  antle: {
+    label: 'Antle', skin: '#e8b88e', hairColor: '#1c1410', hair: 'swept',
+    glasses: 'sun', smile: 'grin',
+    top: { type: 'openShirt', color: '#b09a85' },
+    bottom: { type: 'pants', color: '#3a3a42' }, shoes: { type: 'slipons', color: '#5a4a3c' },
+  },
+};
 
 // ============================================================ SCENES
 const Scenes = {};
@@ -170,6 +549,22 @@ Scenes.title = {
   exit() {}
 };
 
+// ---- Debug: character lineup at #lineup
+Scenes.lineup = {
+  enter() {
+    const keys = Object.keys(CHARACTERS);
+    stage.innerHTML = `
+      <rect width="1600" height="900" fill="#e8f4ea"/>
+      ${keys.map((k, i) => {
+        const x = 110 + i * 172;
+        return buildCharacter(CHARACTERS[k], { x, y: 640, scale: 0.85, idle: true, cls: 'ch-' + k }) +
+          `<text x="${x}" y="720" text-anchor="middle" font-size="26" font-family="'Comic Sans MS',cursive" fill="#3a5a46">${CHARACTERS[k].label}</text>`;
+      }).join('')}
+    `;
+  },
+  exit() {}
+};
+
 // ---- Map placeholder (real map in Task 4)
 Scenes.map = {
   enter() {
@@ -201,7 +596,7 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
-App.go('title');
+App.go(location.hash === '#lineup' ? 'lineup' : 'title');
 </script>
 </body>
 </html>
