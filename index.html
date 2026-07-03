@@ -181,6 +181,13 @@ const Audio = (() => {
     step()    { noise({ dur: 0.04, vol: 0.25, freq: 700 }); },
     meow()    { tone({ freq: 700, dur: 0.35, type: 'sawtooth', vol: 0.12, slide: -280 }); },
     bounce()  { tone({ freq: 240, dur: 0.14, type: 'triangle', vol: 0.4, slide: -120 }); },
+    whee()    { tone({ freq: 400, dur: 0.7, type: 'triangle', vol: 0.35, slide: 900 }); },
+    giggle()  { [780, 680, 880, 640].forEach((f, i) => tone({ freq: f, dur: 0.1, type: 'sine', vol: 0.22, at: i * 0.1 })); },
+    bell()    { tone({ freq: 660, dur: 0.5, vol: 0.32 }); tone({ freq: 880, dur: 0.6, vol: 0.24, at: 0.14 }); },
+    pageflip() { noise({ dur: 0.14, vol: 0.35, freq: 1200 }); },
+    coin()    { tone({ freq: 1300, dur: 0.1, vol: 0.28 }); tone({ freq: 1750, dur: 0.14, vol: 0.24, at: 0.07 }); },
+    bark()    { tone({ freq: 320, dur: 0.12, type: 'sawtooth', vol: 0.3, slide: -80 }); tone({ freq: 300, dur: 0.12, type: 'sawtooth', vol: 0.28, slide: -70, at: 0.16 }); },
+    clap()    { noise({ dur: 0.05, vol: 0.6, freq: 2000 }); },
     fanfare() {
       [[523, 0], [659, 0.12], [784, 0.24], [1047, 0.38]].forEach(([f, at]) =>
         tone({ freq: f, dur: 0.35, type: 'triangle', vol: 0.35, at }));
@@ -696,6 +703,37 @@ const CHARACTERS = {
     glasses: 'sun', smile: 'grin',
     top: { type: 'openShirt', color: '#b09a85' },
     bottom: { type: 'pants', color: '#3a3a42' }, shoes: { type: 'slipons', color: '#5a4a3c' },
+  },
+  // ---- Cartoon friends at the town (no photos)
+  teacher: {
+    label: 'Teacher Bona', skin: '#f0c49a', hairColor: '#3a281c', hair: 'shoulderBob',
+    glasses: 'rect', smile: 'grin',
+    top: { type: 'blouse', color: '#f4886f' },
+    bottom: { type: 'skirt', color: '#3c4a6a' }, shoes: { type: 'slipons', color: '#5a4a3c' },
+  },
+  rachel: {
+    label: 'Rachel', skin: '#f4cba6', hairColor: '#241812', hair: 'shoulderBob',
+    hat: 'bow', smile: 'open', socks: true,
+    top: { type: 'dress', color: '#ffd94d', collar: '#fffaf2' },
+    bottom: null, shoes: { type: 'sneakers', color: '#ff8fb5' },
+  },
+  kidA: {
+    label: 'Miko', skin: '#e0a878', hairColor: '#1c1410', hair: 'shortSpiky',
+    smile: 'grin',
+    top: { type: 'tshirt', color: '#9edb7a' },
+    bottom: { type: 'shorts', color: '#5a6a8a' }, shoes: { type: 'sneakers', color: '#4a90d9' },
+  },
+  kidB: {
+    label: 'Lia', skin: '#f2c9a4', hairColor: '#2a1c14', hair: 'ponytail',
+    smile: 'open', socks: true,
+    top: { type: 'dress', color: '#8ecae6', collar: '#fffaf2' },
+    bottom: null, shoes: { type: 'maryjane', color: '#c94f6a' },
+  },
+  pastor: {
+    label: 'Pastor', skin: '#e8b88e', hairColor: '#3a3a3a', hair: 'shortNeat',
+    smile: 'soft',
+    top: { type: 'polo', color: '#fbfbfd' },
+    bottom: { type: 'pants', color: '#3a3a44' }, shoes: { type: 'slipons', color: '#3a3a3a' },
   },
 };
 
@@ -1280,7 +1318,7 @@ Scenes.map = {
         <path d="M 1388 460 Q 1800 430 2200 470 Q 2700 520 3100 500 Q 3600 470 ${WORLD_W} 520"
           fill="none" stroke="#fffaf2" stroke-width="6" stroke-dasharray="26 30" opacity="0.8"/>
         ${MAP_DECOR}
-        ${playgroundSVG(2950, 470)}
+        ${playgroundSVG()}
         ${HOUSES.map(houseSVG).join('')}
         ${schoolSVG(PLACES[0])}
         ${churchSVG(PLACES[1])}
@@ -1369,15 +1407,216 @@ Scenes.map = {
 
     wireMuteButton();
   },
-  wirePlayground(world, eya) {},   // filled in by the playground task
+  wirePlayground(world, eya) {
+    const eyaEl = $('#eyaWalk');
+    const restore = (x, y) => { eya.pos.x = x; eya.pos.y = y; eya.place(); };
+
+    // SLIDE ─ climb the ladder, whoosh down the chute
+    const slide = world.querySelector('[data-pg="slide"]');
+    if (slide) slide.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(2660, 800, 60, () => {
+        App.locked = true;
+        eya.stop();
+        // climb
+        tween(900, t => {
+          const x = 2660 + (2705 - 2660) * t, y = 800 + (490 - 800) * t;
+          const s = eya.scaleFn ? eya.scaleFn(y) : 1;
+          eyaEl.setAttribute('transform', `translate(${x} ${y}) scale(${s})`);
+          if (t > 0.5 && !slide.dataset.said) { slide.dataset.said = '1'; }
+        }, () => {
+          Audio.sfx('whee'); Audio.say('Wheee!');
+          // slide down chute (quadratic P0->P1->P2)
+          const P0 = [2705, 495], P1 = [2770, 760], P2 = [2910, 748];
+          tween(800, t => {
+            const u = 1 - t;
+            const x = u * u * P0[0] + 2 * u * t * P1[0] + t * t * P2[0];
+            const y = u * u * P0[1] + 2 * u * t * P1[1] + t * t * P2[1];
+            const s = eya.scaleFn ? eya.scaleFn(y) : 1;
+            eyaEl.setAttribute('transform', `translate(${x} ${y}) scale(${s})`);
+          }, () => { restore(2910, 780); slide.dataset.said = ''; App.locked = false; });
+        });
+      });
+    });
+
+    // SWING ─ sit and swing back and forth
+    const swing = world.querySelector('[data-pg="swing"]');
+    const swingSeat = world.querySelector('#swingSeat');
+    if (swing) swing.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(3080, 800, 70, () => {
+        App.locked = true;
+        eya.stop();
+        const pivot = [3080, 430], L = 300;
+        tween(2600, t => {
+          const th = 0.5 * Math.sin(t * Math.PI * 6) * (1 - t * 0.15); // radians
+          const sx = pivot[0] + L * Math.sin(th), sy = pivot[1] + L * Math.cos(th);
+          if (swingSeat) swingSeat.setAttribute('transform', `rotate(${th * 180 / Math.PI} ${pivot[0]} ${pivot[1]})`);
+          const s = eya.scaleFn ? eya.scaleFn(sy) : 1;
+          eyaEl.setAttribute('transform', `translate(${sx} ${sy + 10}) scale(${s})`);
+          if (Math.abs(th) > 0.45 && !swing.dataset.b) { swing.dataset.b = '1'; Audio.sfx('boing'); }
+          else if (Math.abs(th) < 0.2) swing.dataset.b = '';
+        }, () => { if (swingSeat) swingSeat.setAttribute('transform', ''); restore(3080, 790); App.locked = false; });
+      });
+    });
+
+    // SEESAW ─ ride up and down with a friend
+    const seesaw = world.querySelector('[data-pg="seesaw"]');
+    const plank = world.querySelector('#seesawPlank');
+    if (seesaw) seesaw.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(3300, 800, 70, () => {
+        App.locked = true;
+        eya.stop();
+        const pivot = [3380, 745];
+        tween(2400, t => {
+          const th = 0.18 * Math.sin(t * Math.PI * 8) * (1 - t * 0.2);
+          if (plank) plank.setAttribute('transform', `rotate(${th * 180 / Math.PI} ${pivot[0]} ${pivot[1]})`);
+          const ny = 705 - Math.sin(th) * 90; // near (left) end height
+          const s = eya.scaleFn ? eya.scaleFn(ny + 60) : 1;
+          eyaEl.setAttribute('transform', `translate(3300 ${ny + 60}) scale(${s})`);
+          if (Math.abs(th) > 0.15 && !seesaw.dataset.b) { seesaw.dataset.b = '1'; Audio.sfx('boing'); }
+          else if (Math.abs(th) < 0.05) seesaw.dataset.b = '';
+        }, () => { if (plank) plank.setAttribute('transform', ''); restore(3300, 800); App.locked = false; });
+      });
+    });
+
+    // SANDBOX ─ build a sandcastle (tap to build, tap again to flatten)
+    const sandbox = world.querySelector('[data-pg="sandbox"]');
+    const castle = world.querySelector('#sandcastle');
+    if (sandbox) sandbox.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(3600, 815, 95, () => {
+        const built = sandbox.dataset.built === '1';
+        sandbox.dataset.built = built ? '' : '1';
+        Audio.sfx(built ? 'pop' : 'sparkle');
+        tween(500, t => {
+          const k = built ? 1 - easeInOut(t) : easeInOut(t);
+          if (castle) castle.setAttribute('transform', `translate(3600 808) scale(${k})`);
+        });
+      });
+    });
+
+    // BEACH BALL ─ tap to make it bounce
+    const ball = world.querySelector('[data-pg="ball"]');
+    if (ball) ball.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(3210, 805, 90, () => {
+        Audio.sfx('bounce');
+        tween(900, t => {
+          const h = Math.abs(Math.sin(t * Math.PI * 3)) * 120 * (1 - t);
+          const sq = 1 + Math.cos(t * Math.PI * 6) * 0.08 * (1 - t);
+          ball.setAttribute('transform', `translate(3220 ${800 - h}) scale(${1 / sq} ${sq})`);
+        }, () => ball.setAttribute('transform', 'translate(3220 800)'));
+      });
+    });
+
+    // BUTTERFLIES ─ tap to make them flutter happily
+    world.querySelectorAll('.butterfly').forEach(bf => {
+      bf.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        Audio.sfx('giggle');
+        const wings = bf.querySelector('.wings');
+        tween(600, t => { if (wings) wings.setAttribute('transform', `scale(${1 + Math.sin(t * Math.PI * 6) * 0.3} 1)`); },
+          () => { if (wings) wings.setAttribute('transform', ''); });
+      });
+    });
+  },
   exit() {
     if (this.eya) { this.eya.destroy(); this.eya = null; }
   }
 };
 
-// placeholder playground art until the playground task fills it in
-function playgroundSVG(x, y) {
-  return `<g id="playground" transform="translate(${x} ${y})"></g>`;
+// Playground — a cluster of outdoor play equipment in the town field (absolute world coords).
+function playgroundSVG() {
+  const butterfly = (cx, cy, c, dur, path) => `
+    <g class="butterfly" style="cursor:pointer">
+      <g transform="translate(${cx} ${cy})">
+        <g class="wings">
+          <ellipse cx="-11" cy="-6" rx="12" ry="15" fill="${c}"/>
+          <ellipse cx="11" cy="-6" rx="12" ry="15" fill="${c}"/>
+          <ellipse cx="-10" cy="10" rx="9" ry="11" fill="${c}" opacity="0.85"/>
+          <ellipse cx="10" cy="10" rx="9" ry="11" fill="${c}" opacity="0.85"/>
+          <rect x="-1.5" y="-12" width="3" height="26" rx="1.5" fill="#4a3a2a"/>
+        </g>
+      </g>
+      <animateMotion dur="${dur}s" repeatCount="indefinite" path="${path}"/>
+    </g>`;
+  return `<g id="playground">
+    <!-- sign -->
+    <g transform="translate(3080 250)">
+      <rect x="-120" y="-34" width="240" height="56" rx="12" fill="#fffaf2" stroke="#d9c9a8" stroke-width="4"/>
+      ${bigLabel(0, 4, '🛝 Palaruan', { size: 30, fill: '#6a4a2a', stroke: '#fffaf2' })}
+    </g>
+
+    <!-- SLIDE -->
+    <g data-pg="slide" style="cursor:pointer">
+      <rect x="2680" y="480" width="16" height="320" rx="6" fill="#c98a4a"/>
+      <rect x="2716" y="480" width="16" height="320" rx="6" fill="#c98a4a"/>
+      ${[540, 590, 640, 690, 740].map(y => `<rect x="2680" y="${y}" width="52" height="10" rx="4" fill="#e0a860"/>`).join('')}
+      <rect x="2668" y="452" width="76" height="44" rx="8" fill="#f2a54a"/>
+      <path d="M 2700 495 Q 2770 760 2910 748 L 2910 780 Q 2760 792 2686 520 Z" fill="#ff8fb5"/>
+      <path d="M 2700 495 Q 2770 760 2910 748" fill="none" stroke="#f26fa0" stroke-width="6"/>
+      <rect x="2896" y="740" width="30" height="52" rx="8" fill="#8ecae6"/>
+    </g>
+
+    <!-- SWING -->
+    <g data-pg="swing" style="cursor:pointer">
+      <line x1="3080" y1="430" x2="2990" y2="770" stroke="#9a6a42" stroke-width="14" stroke-linecap="round"/>
+      <line x1="3080" y1="430" x2="3170" y2="770" stroke="#9a6a42" stroke-width="14" stroke-linecap="round"/>
+      <rect x="2990" y="424" width="180" height="14" rx="7" fill="#8a5f3c"/>
+      <g id="swingSeat">
+        <line x1="3055" y1="436" x2="3055" y2="720" stroke="#6a6a72" stroke-width="5"/>
+        <line x1="3105" y1="436" x2="3105" y2="720" stroke="#6a6a72" stroke-width="5"/>
+        <rect x="3048" y="718" width="64" height="14" rx="6" fill="#f2c94c"/>
+      </g>
+    </g>
+
+    <!-- SEESAW -->
+    <g data-pg="seesaw" style="cursor:pointer">
+      <path d="M 3350 800 L 3410 800 L 3380 742 Z" fill="#9a6a42"/>
+      <g id="seesawPlank">
+        <rect x="3270" y="698" width="220" height="16" rx="8" fill="#8ecae6"/>
+        <circle cx="3286" cy="690" r="10" fill="#f47a5e"/>
+        <circle cx="3474" cy="690" r="10" fill="#f47a5e"/>
+        <!-- friend on the far end -->
+        ${buildCharacter(CHARACTERS.rachel || CHARACTERS.eya, { x: 3474, y: 690, scale: 0.42, facing: -1 })}
+      </g>
+    </g>
+
+    <!-- SANDBOX -->
+    <g data-pg="sandbox" style="cursor:pointer">
+      <rect x="3510" y="800" width="180" height="46" rx="8" fill="#c98a4a"/>
+      <ellipse cx="3600" cy="808" rx="82" ry="20" fill="#f2d9a0"/>
+      <g id="sandcastle" transform="translate(3600 808) scale(0)">
+        <rect x="-34" y="-40" width="68" height="40" fill="#e8c078"/>
+        <rect x="-34" y="-52" width="16" height="14" fill="#e8c078"/>
+        <rect x="-8" y="-52" width="16" height="14" fill="#e8c078"/>
+        <rect x="18" y="-52" width="16" height="14" fill="#e8c078"/>
+        <path d="M 0 -52 L 0 -74 L 22 -64 Z" fill="#ff8fb5"/>
+      </g>
+      <rect x="3526" y="778" width="34" height="26" rx="6" fill="#f47a5e"/>
+      <path d="M 3660 808 L 3696 762" stroke="#8ecae6" stroke-width="8" stroke-linecap="round"/>
+      <ellipse cx="3696" cy="758" rx="14" ry="8" fill="#8ecae6"/>
+    </g>
+
+    <!-- BEACH BALL -->
+    <g data-pg="ball" transform="translate(3220 800)" style="cursor:pointer">
+      <circle r="34" fill="#fffaf2"/>
+      <path d="M -34 0 A 34 34 0 0 1 34 0 Z" fill="#ff8fb5"/>
+      <path d="M -24 -24 A 34 34 0 0 1 24 -24 L 0 0 Z" fill="#8ecae6"/>
+      <path d="M 0 0 L 34 0 A 34 34 0 0 1 10 32 Z" fill="#ffd94d"/>
+    </g>
+
+    ${butterfly(2950, 420, '#ff8fb5', 9, 'M0,0 q40,-40 80,0 q-40,40 -80,0 Z')}
+    ${butterfly(3230, 380, '#c9a0f0', 11, 'M0,0 q-50,30 -90,-10 q50,-30 90,10 Z')}
+    ${butterfly(2860, 470, '#ffd94d', 8, 'M0,0 q30,50 70,20 q-30,-50 -70,-20 Z')}
+  </g>`;
 }
 
 // ============================================================ PLACE SCENES (playground/school/church share this)
