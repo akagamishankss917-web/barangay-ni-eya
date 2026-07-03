@@ -1,5 +1,5 @@
 // Cache-first service worker: after the first visit, the game launches fully offline.
-const CACHE = 'eya-v6';
+const CACHE = 'eya-v7';
 const ASSETS = [
   '.',
   'index.html',

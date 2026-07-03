@@ -24,41 +24,21 @@
   body { display:flex; align-items:center; justify-content:center; }
   #stage {
     display:block;
+    flex:0 0 auto;                    /* never let the flex row shrink the stage */
     width:100vw; height:56.25vw;      /* 16:9 */
     max-height:100vh; max-width:177.78vh;
+    transform-origin:center center;
     touch-action:none;
   }
   #stage text { pointer-events:none; }
-  #rotate-hint {
-    position:fixed; inset:0; z-index:10;
-    display:none; align-items:center; justify-content:center;
-    background:#7ec8e3;
-  }
-  @media (orientation: portrait) {
-    #rotate-hint { display:flex; }
-  }
-  .spin-phone { animation: spinphone 2s ease-in-out infinite; transform-origin:50% 50%; }
-  @keyframes spinphone {
-    0%, 20% { transform:rotate(0deg); }
-    60%, 100% { transform:rotate(90deg); }
-  }
+  /* Portrait handling is done in JS (fitStage) by rotating the stage to fill
+     the screen, so the game stays playable even with rotation-lock on. */
+  #rotate-hint { display:none; }
 </style>
 </head>
 <body>
 
 <svg id="stage" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet"></svg>
-
-<div id="rotate-hint" aria-hidden="true">
-  <svg viewBox="0 0 400 400" width="60%" style="max-width:340px">
-    <g class="spin-phone">
-      <rect x="150" y="90" width="100" height="180" rx="18" fill="#fff" stroke="#4a6b7c" stroke-width="10"/>
-      <circle cx="200" cy="242" r="10" fill="#4a6b7c"/>
-      <rect x="180" y="108" width="40" height="8" rx="4" fill="#4a6b7c"/>
-    </g>
-    <path d="M 110 330 A 120 120 0 0 1 60 210" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round"/>
-    <path d="M 40 240 L 60 200 L 92 232 Z" fill="#fff"/>
-  </svg>
-</div>
 
 <script>
 'use strict';
@@ -978,7 +958,7 @@ Scenes.title = {
         <text x="803" y="323" font-size="118" font-weight="bold" fill="#3d7a52" opacity="0.35">Barangay ni Eya</text>
         <text x="800" y="315" font-size="118" font-weight="bold" fill="#ff8fb5" stroke="#fff" stroke-width="4" paint-order="stroke">Barangay ni Eya</text>
       </g>
-      <text x="1580" y="888" text-anchor="end" font-size="26" fill="#3d7a52" opacity="0.7" font-family="sans-serif">v6</text>
+      <text x="1580" y="888" text-anchor="end" font-size="26" fill="#3d7a52" opacity="0.7" font-family="sans-serif">v7</text>
       <!-- Eya waving hello -->
       <g id="titleEya">${buildCharacter(effectiveEyaSpec(), { x: 430, y: 780, scale: 0.95, idle: true })}</g>
       <!-- play button -->
@@ -2911,6 +2891,29 @@ try {
     navigator.serviceWorker.register('sw.js');
   }
 } catch (e) {}
+
+// Portrait handling: rotate the stage 90° to fill the screen so the game stays
+// playable and upright even when the phone's rotation lock keeps it in portrait.
+// In landscape we clear the inline styles and let the CSS 16:9 fit take over.
+function fitStage() {
+  const portrait = window.innerHeight > window.innerWidth;
+  const s = stage.style;
+  if (portrait) {
+    const availLong = window.innerHeight, availShort = window.innerWidth;
+    let w = availLong, h = w * 9 / 16;          // try to fill screen height
+    if (h > availShort) { h = availShort; w = h * 16 / 9; }  // else fit screen width
+    s.width = w + 'px';
+    s.height = h + 'px';
+    s.maxWidth = 'none';
+    s.maxHeight = 'none';
+    s.transform = 'rotate(90deg)';
+  } else {
+    s.width = s.height = s.maxWidth = s.maxHeight = s.transform = '';
+  }
+}
+fitStage();
+window.addEventListener('resize', fitStage);
+window.addEventListener('orientationchange', () => setTimeout(fitStage, 100));
 
 // iOS restores suspended pages instead of reloading — recover cleanly.
 window.addEventListener('pageshow', e => {
