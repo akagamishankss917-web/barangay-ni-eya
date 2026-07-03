@@ -679,6 +679,7 @@ Scenes.title = {
         <text x="803" y="323" font-size="118" font-weight="bold" fill="#3d7a52" opacity="0.35">Barangay ni Eya</text>
         <text x="800" y="315" font-size="118" font-weight="bold" fill="#ff8fb5" stroke="#fff" stroke-width="4" paint-order="stroke">Barangay ni Eya</text>
       </g>
+      <text x="1580" y="888" text-anchor="end" font-size="22" fill="#3d7a52" opacity="0.5" font-family="sans-serif">v2</text>
       <!-- play button -->
       <g id="playBtn" style="cursor:pointer">
         <circle cx="800" cy="590" r="115" fill="#ff8fb5" stroke="#fff" stroke-width="12">
@@ -1681,6 +1682,17 @@ try {
     navigator.serviceWorker.register('sw.js');
   }
 } catch (e) {}
+
+// iOS restores suspended pages instead of reloading — recover cleanly.
+window.addEventListener('pageshow', e => {
+  if (e.persisted) location.reload();
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    Audio.unlock();
+    try { speechSynthesis.cancel(); } catch (e) {}
+  }
+});
 
 // #lineup, #map, #house-<id>, #dressup are debug entry points
 const dbg = location.hash.slice(1);

@@ -4,7 +4,7 @@
   "description": "A gentle Philippine barangay playworld for Eya",
   "start_url": ".",
   "scope": ".",
-  "display": "fullscreen",
+  "display": "standalone",
   "orientation": "landscape",
   "background_color": "#aee3f5",
   "theme_color": "#f6a8c9",

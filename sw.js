@@ -1,5 +1,5 @@
 // Cache-first service worker: after the first visit, the game launches fully offline.
-const CACHE = 'eya-v1';
+const CACHE = 'eya-v2';
 const ASSETS = [
   '.',
   'index.html',
@@ -26,6 +26,13 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // App launches (from home screen or address bar) always get the cached game.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      caches.match('index.html').then(cached => cached || fetch(e.request))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then(cached =>
       cached ||
