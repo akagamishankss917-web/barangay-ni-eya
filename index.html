@@ -393,6 +393,13 @@ function drawHat(spec) {
         <path d="M -30 8 L 0 -58 L 30 8 Z" fill="#8ecae6"/>
         <path d="M -21 -12 L 21 -12 L 26 0 L -26 0 Z" fill="#ffd94d"/>
         <circle cx="0" cy="-58" r="9" fill="#ff8fb5"/></g>`;
+    case 'flowerCrown':
+      return `<g transform="translate(0,-318)">
+        <path d="M -40 6 Q 0 -14 40 6" stroke="#4ca858" stroke-width="7" fill="none"/>
+        ${[-40, -20, 0, 20, 40].map((x, i) => {
+          const col = ['#ff8fb5', '#ffd94d', '#c9a0f0', '#ff8fb5', '#ffd94d'][i], y = 6 - Math.abs(x) * 0.28 - 8;
+          return `<g transform="translate(${x} ${y})">${[0, 72, 144, 216, 288].map(a => `<ellipse cx="0" cy="-6" rx="4" ry="6" fill="${col}" transform="rotate(${a})"/>`).join('')}<circle r="3" fill="#fff"/></g>`;
+        }).join('')}</g>`;
     default: return '';
   }
 }
@@ -416,6 +423,37 @@ function drawTop(spec) {
               <path d="M 38 -195 Q 70 -200 66 -168 Q 52 -160 40 -172 Z" fill="#fffaf2"/>
               <path d="M -44 -122 L 44 -122 L 66 -52 Q 0 -36 -66 -52 Z" fill="${c}"/>
               <path d="M -60 -66 Q 0 -50 60 -66" stroke="#f2c94c" stroke-width="5" fill="none"/>`;
+    case 'gown': { // princess / party ball gown: fitted bodice + wide sparkly skirt
+      const trim = t.collar || '#ffe9a8';
+      const sparkle = [[-34, -92], [24, -74], [-8, -54], [44, -108], [-52, -58], [12, -104]]
+        .map(([x, y]) => `<path d="M ${x} ${y - 6} L ${x + 2} ${y - 1} L ${x + 7} ${y} L ${x + 2} ${y + 1} L ${x} ${y + 6} L ${x - 2} ${y + 1} L ${x - 7} ${y} L ${x - 2} ${y - 1} Z" fill="#fff" opacity="0.85"/>`).join('');
+      return `<path d="M -40 -196 L 40 -196 L 100 -18 Q 0 6 -100 -18 Z" fill="${c}"/>
+              <path d="M -40 -196 L 40 -196 L 46 -150 Q 0 -140 -46 -150 Z" fill="${trim}"/>
+              <path d="M -100 -18 Q 0 6 100 -18" stroke="${trim}" stroke-width="6" fill="none"/>
+              <path d="M -46 -150 Q 0 -122 46 -150" stroke="${trim}" stroke-width="4" fill="none"/>
+              <path d="M -30 -188 L 0 -168 L -38 -156 Q -44 -176 -30 -188 Z" fill="${trim}"/>
+              <path d="M 30 -188 L 0 -168 L 38 -156 Q 44 -176 30 -188 Z" fill="${trim}"/>
+              ${sparkle}`;
+    }
+    case 'uniform': { // school uniform: white blouse + tie + pleated skirt
+      const skirt = t.skirt || '#3a4a6a';
+      return `<rect x="-46" y="-196" width="92" height="74" rx="16" fill="#fbfbfd"/>
+              <path d="M -46 -186 L -76 -160 L -62 -138 L -44 -156 Z" fill="#fbfbfd"/>
+              <path d="M 46 -186 L 76 -160 L 62 -138 L 44 -156 Z" fill="#fbfbfd"/>
+              <path d="M -16 -196 L 0 -180 L -18 -172 Z" fill="#eeeef2"/>
+              <path d="M 16 -196 L 0 -180 L 18 -172 Z" fill="#eeeef2"/>
+              <path d="M 0 -180 L -7 -150 L 0 -140 L 7 -150 Z" fill="#c94f5c"/>
+              <path d="M -50 -126 L 50 -126 L 62 -52 Q 0 -36 -62 -52 Z" fill="${skirt}"/>
+              ${[-38, -19, 0, 19, 38].map(x => `<line x1="${x}" y1="-122" x2="${x * 1.22}" y2="-54" stroke="#2a3550" stroke-width="2.5"/>`).join('')}`;
+    }
+    case 'tutu': { // ballerina: leotard bodice + puffy tutu skirt
+      const puff = t.collar || '#fff0f6';
+      return `<path d="M -32 -196 L 32 -196 L 34 -118 L -34 -118 Z" fill="${c}"/>
+              <path d="M -32 -196 Q -58 -198 -54 -170 Q -42 -162 -32 -172 Z" fill="${c}"/>
+              <path d="M 32 -196 Q 58 -198 54 -170 Q 42 -162 32 -172 Z" fill="${c}"/>
+              <path d="M -66 -130 Q 0 -104 66 -130 Q 44 -84 0 -88 Q -44 -84 -66 -130 Z" fill="${puff}"/>
+              <path d="M -54 -122 Q 0 -100 54 -122" stroke="#fff" stroke-width="3" fill="none" opacity="0.7"/>`;
+    }
     case 'tshirt':
       return `<rect x="-46" y="-196" width="92" height="100" rx="20" fill="${c}"/>
               <path d="M -46 -186 L -76 -160 L -62 -138 L -44 -156 Z" fill="${c}"/>
@@ -451,7 +489,7 @@ function drawTop(spec) {
 }
 
 function drawBottom(spec) {
-  const isDress = ['dress', 'baroSaya'].includes(spec.top.type);
+  const isDress = ['dress', 'baroSaya', 'gown', 'uniform', 'tutu'].includes(spec.top.type);
   if (isDress || !spec.bottom) return '';
   const b = spec.bottom, c = b.color;
   switch (b.type) {
@@ -498,6 +536,13 @@ function drawShoes(spec) {
         <path d="M -34 -20 Q -20 -28 -8 -20 L -6 -2 L -36 -2 Z"/>
         <path d="M 34 -20 Q 20 -28 8 -20 L 6 -2 L 36 -2 Z"/></g>
         <circle cx="-21" cy="-20" r="5" fill="#ffd94d"/><circle cx="21" cy="-20" r="5" fill="#ffd94d"/>`;
+    case 'boots':
+      return `<g fill="${c}">
+        <path d="M -32 -56 L -12 -56 L -10 -6 L -34 -6 Z"/>
+        <path d="M -38 -8 Q -36 -22 -10 -18 L -8 -2 L -38 -2 Z"/>
+        <path d="M 32 -56 L 12 -56 L 10 -6 L 34 -6 Z"/>
+        <path d="M 38 -8 Q 36 -22 10 -18 L 8 -2 L 38 -2 Z"/></g>
+        <path d="M -32 -40 L -12 -40 M 12 -40 L 32 -40" stroke="#fff" stroke-width="3" opacity="0.6"/>`;
     case 'slipons':
     default:
       return socks + `<g fill="${c}">
@@ -1051,6 +1096,14 @@ const WARDROBE = {
       icon: `<path d="M -16 -30 L 16 -30 L 30 -20 L 24 -8 L 16 -14 L 16 24 L -16 24 L -16 -14 L -24 -8 L -30 -20 Z" fill="#ffd94d"/><rect x="-10" y="-8" width="20" height="9" rx="3" fill="#fbfbfd"/><rect x="-10" y="-5" width="20" height="3" fill="#ff8fb5"/>` },
     { id: 'rainbowTee', mut: s => { s.top = { type: 'tshirt', color: '#fbfbfd', print: rainbowPrint }; s.bottom = { type: 'skirt', color: '#9edb7a' }; },
       icon: `<path d="M -16 -30 L 16 -30 L 30 -20 L 24 -8 L 16 -14 L 16 24 L -16 24 L -16 -14 L -24 -8 L -30 -20 Z" fill="#fbfbfd"/><path d="M -12 4 A 12 12 0 0 1 12 4" stroke="#f47a5e" stroke-width="4" fill="none"/><path d="M -6 4 A 6 6 0 0 1 6 4" stroke="#8ecae6" stroke-width="4" fill="none"/>` },
+    { id: 'princess', mut: s => { s.top = { type: 'gown', color: '#e86ab0', collar: '#ffe066' }; s.bottom = null; },
+      icon: `<path d="M -18 -30 L 18 -30 L 34 26 Q 0 38 -34 26 Z" fill="#e86ab0"/><path d="M -18 -30 L 18 -30 L 20 -18 Q 0 -14 -20 -18 Z" fill="#ffe066"/><path d="M -6 -4 l 2 4 l 4 2 l -4 2 l -2 4 l -2 -4 l -4 -2 l 4 -2 Z" fill="#fff"/>` },
+    { id: 'partyDress', mut: s => { s.top = { type: 'gown', color: '#d94f5c', collar: '#ffd94d' }; s.bottom = null; },
+      icon: `<path d="M -18 -30 L 18 -30 L 34 26 Q 0 38 -34 26 Z" fill="#d94f5c"/><path d="M -18 -30 L 18 -30 L 20 -18 Q 0 -14 -20 -18 Z" fill="#ffd94d"/><circle cx="0" cy="4" r="4" fill="#fff" opacity="0.9"/>` },
+    { id: 'schoolUniform', mut: s => { s.top = { type: 'uniform', skirt: '#3a4a6a' }; s.bottom = null; },
+      icon: `<rect x="-16" y="-30" width="32" height="26" rx="6" fill="#fbfbfd"/><path d="M 0 -18 L -5 -6 L 0 -2 L 5 -6 Z" fill="#c94f5c"/><path d="M -18 -4 L 18 -4 L 24 26 Q 0 34 -24 26 Z" fill="#3a4a6a"/>` },
+    { id: 'ballerina', mut: s => { s.top = { type: 'tutu', color: '#f6a8d0', collar: '#fff0f6' }; s.bottom = null; },
+      icon: `<path d="M -12 -30 L 12 -30 L 13 -2 L -13 -2 Z" fill="#f6a8d0"/><path d="M -28 -6 Q 0 8 28 -6 Q 18 24 0 22 Q -18 24 -28 -6 Z" fill="#fff0f6"/>` },
   ],
   hat: [
     { id: 'tiara', mut: s => { s.hat = 'tiara'; },
@@ -1061,6 +1114,8 @@ const WARDROBE = {
       icon: `<g transform="translate(0 8) scale(0.42)"><ellipse cx="0" cy="6" rx="84" ry="18" fill="#f0d9a8"/><path d="M -46 4 Q -46 -34 0 -34 Q 46 -34 46 4 Z" fill="#f6e4bc"/><path d="M -46 -2 Q 0 8 46 -2" stroke="#ff8fb5" stroke-width="8" fill="none"/></g>` },
     { id: 'partyhat', mut: s => { s.hat = 'partyhat'; },
       icon: `<g transform="translate(0 16) scale(0.55)"><path d="M -30 8 L 0 -58 L 30 8 Z" fill="#8ecae6"/><path d="M -21 -12 L 21 -12 L 26 0 L -26 0 Z" fill="#ffd94d"/><circle cx="0" cy="-58" r="9" fill="#ff8fb5"/></g>` },
+    { id: 'flowerCrown', mut: s => { s.hat = 'flowerCrown'; },
+      icon: `<g transform="translate(0 6)"><path d="M -26 6 Q 0 -10 26 6" stroke="#4ca858" stroke-width="5" fill="none"/>${[-24, -8, 8, 24].map((x, i) => `<g transform="translate(${x} ${-2 - (i === 1 || i === 2 ? 4 : 0)})">${[0, 90, 180, 270].map(a => `<ellipse cx="0" cy="-5" rx="4" ry="6" fill="${['#ff8fb5', '#ffd94d', '#c9a0f0', '#ff8fb5'][i]}" transform="rotate(${a})"/>`).join('')}<circle r="2.5" fill="#fff"/></g>`).join('')}</g>` },
     { id: 'noHat', mut: s => { s.hat = null; },
       icon: `<circle r="26" fill="none" stroke="#c9b8a8" stroke-width="5"/><line x1="-18" y1="18" x2="18" y2="-18" stroke="#c9b8a8" stroke-width="5"/>` },
   ],
@@ -1073,6 +1128,10 @@ const WARDROBE = {
       icon: `<g transform="scale(0.72)"><ellipse cx="-18" cy="2" rx="17" ry="8" fill="#ffd94d"/><ellipse cx="18" cy="2" rx="17" ry="8" fill="#ffd94d"/><path d="M -25 0 L -18 -8 L -11 0 M 11 0 L 18 -8 L 25 0" stroke="#f47a5e" stroke-width="3.5" fill="none"/></g>` },
     { id: 'partyShoes', mut: s => { s.shoes = { type: 'party', color: '#e05a6a' }; s.socks = true; },
       icon: `<g transform="scale(0.62)"><path d="M -34 -8 Q -20 -22 -6 -10 L -4 10 L -36 10 Z" fill="#e05a6a"/><path d="M 34 -8 Q 20 -22 6 -10 L 4 10 L 36 10 Z" fill="#e05a6a"/><circle cx="-21" cy="-10" r="5" fill="#ffd94d"/><circle cx="21" cy="-10" r="5" fill="#ffd94d"/></g>` },
+    { id: 'glassSlipper', mut: s => { s.shoes = { type: 'party', color: '#d8ecff' }; s.socks = true; },
+      icon: `<g transform="scale(0.62)"><path d="M -34 -8 Q -20 -22 -6 -10 L -4 10 L -36 10 Z" fill="#d8ecff" stroke="#a8d0f0" stroke-width="2"/><path d="M 34 -8 Q 20 -22 6 -10 L 4 10 L 36 10 Z" fill="#d8ecff" stroke="#a8d0f0" stroke-width="2"/><circle cx="-21" cy="-11" r="4" fill="#fff"/><circle cx="21" cy="-11" r="4" fill="#fff"/></g>` },
+    { id: 'rainBoots', mut: s => { s.shoes = { type: 'boots', color: '#ffd94d' }; s.socks = false; },
+      icon: `<g transform="scale(0.6)"><path d="M -34 -30 L -14 -30 L -14 4 L -34 4 Z" fill="#ffd94d"/><path d="M -36 4 L -8 4 L -8 14 L -36 14 Z" fill="#ffd94d"/><path d="M 14 -30 L 34 -30 L 34 4 L 14 4 Z" fill="#ffd94d"/><path d="M 8 4 L 36 4 L 36 14 L 8 14 Z" fill="#ffd94d"/></g>` },
   ],
 };
 const DEFAULT_OUTFIT = { top: 'pinkDress', hat: 'tiara', shoes: 'maryjane' };
@@ -2908,12 +2967,17 @@ Scenes.dressup = {
   },
   renderItems() {
     const items = WARDROBE[this.cat];
-    const startX = 800 - (items.length - 1) * 95;
+    // Fit any number of items in the row centered at x≈930 (right of the tabs).
+    const n = items.length;
+    const spacing = n > 1 ? Math.min(190, 1180 / (n - 1)) : 0;
+    const r = Math.min(80, spacing * 0.46) || 80;
+    const iconScale = 1.6 * (r / 80);
+    const startX = 930 - (n - 1) * spacing / 2;
     $('#duItems').innerHTML = items.map((it, i) => `
-      <g class="duItem" data-id="${it.id}" style="cursor:pointer" transform="translate(${startX + i * 190} 790)">
-        <circle r="80" fill="${State.outfit[this.cat] === it.id ? '#ffd7e6' : '#fff'}"
+      <g class="duItem" data-id="${it.id}" style="cursor:pointer" transform="translate(${startX + i * spacing} 790)">
+        <circle r="${r}" fill="${State.outfit[this.cat] === it.id ? '#ffd7e6' : '#fff'}"
           stroke="${State.outfit[this.cat] === it.id ? '#e8709c' : '#e8d0dc'}" stroke-width="7"/>
-        <g transform="scale(1.6)">${it.icon}</g>
+        <g transform="scale(${iconScale})">${it.icon}</g>
       </g>`).join('');
     stage.querySelectorAll('.duItem').forEach(el => {
       el.addEventListener('pointerdown', e => {
