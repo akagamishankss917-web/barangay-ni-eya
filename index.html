@@ -709,14 +709,285 @@ Scenes.lineup = {
   exit() {}
 };
 
-// ---- Map placeholder (real map in Task 4)
+// ---- The barangay
+// x,y = ground point in front of the house door. Eya until Task 7: CHARACTERS.eya.
+function effectiveEyaSpec() { return CHARACTERS.eya; }
+
+const HOUSES = [
+  { id: 'eya',   label: 'Bahay ni Eya',   color: '#f6a8c9', x: 250,  y: 430, residents: ['eya', 'mommy', 'daddy'] },
+  { id: 'lola',  label: 'Lola Andak',     color: '#e8c07a', x: 640,  y: 330, residents: ['lola'] },
+  { id: 'boy',   label: 'Tito Boy',       color: '#8ecae6', x: 1030, y: 330, residents: ['titoBoy'] },
+  { id: 'joyce', label: 'Tita Joyce',     color: '#b8e0a0', x: 1390, y: 430, residents: ['titaJoyce'] },
+  { id: 'kath',  label: 'Tita Kath',      color: '#d9b8f0', x: 520,  y: 640, residents: ['titaKath'] },
+  { id: 'aunt',  label: 'Auntie & Antle', color: '#ffd98e', x: 1120, y: 640, residents: ['auntie', 'antle'] },
+];
+
+function palmTree(x, y, s = 1) {
+  return `<g class="deco" transform="translate(${x} ${y}) scale(${s})">
+    <path d="M -10 0 Q -16 -90 -4 -150 L 12 -150 Q 6 -90 14 0 Z" fill="#a0764c"/>
+    <line x1="-6" y1="-30" x2="8" y2="-30" stroke="#8a5f3c" stroke-width="4"/>
+    <line x1="-5" y1="-70" x2="9" y2="-70" stroke="#8a5f3c" stroke-width="4"/>
+    <g fill="#4ca858">
+      <path d="M 4 -150 Q -70 -180 -110 -140 Q -50 -150 4 -128 Z"/>
+      <path d="M 4 -150 Q 78 -180 118 -140 Q 58 -150 4 -128 Z"/>
+      <path d="M 4 -152 Q -40 -220 -90 -212 Q -30 -190 8 -136 Z"/>
+      <path d="M 4 -152 Q 48 -220 98 -212 Q 38 -190 0 -136 Z"/>
+      <path d="M 4 -156 Q 4 -230 -20 -240 Q 20 -230 10 -140 Z"/>
+    </g>
+    <circle cx="-8" cy="-140" r="9" fill="#f2c94c"/><circle cx="12" cy="-136" r="9" fill="#f2c94c"/>
+  </g>`;
+}
+
+function bananaPlant(x, y, s = 1) {
+  return `<g class="deco" transform="translate(${x} ${y}) scale(${s})" fill="#5cb868">
+    <path d="M 0 0 Q -6 -60 0 -110 Q -50 -150 -78 -110 Q -40 -120 -6 -84 Z"/>
+    <path d="M 0 -110 Q 50 -150 78 -110 Q 40 -120 4 -86 Q 8 -60 4 0 Z"/>
+    <path d="M -2 -100 Q -10 -170 8 -186 Q 22 -160 6 -96 Z" fill="#6cc878"/>
+  </g>`;
+}
+
+function jeepneySVG(x, y, s = 1) {
+  return `<g class="deco" transform="translate(${x} ${y}) scale(${s})">
+    <path d="M -130 -10 L -130 -60 Q -130 -76 -110 -76 L 96 -76 Q 116 -76 122 -58 L 132 -26 Q 134 -10 120 -10 Z" fill="#fbfbfd"/>
+    <rect x="-124" y="-70" width="200" height="30" rx="8" fill="#8ecae6" opacity="0.7"/>
+    <path d="M -130 -34 L 132 -34 L 132 -22 L -130 -22 Z" fill="#ff8fb5"/>
+    <path d="M -130 -46 L 130 -46 L 130 -40 L -130 -40 Z" fill="#ffd94d"/>
+    <rect x="-142" y="-64" width="14" height="44" rx="6" fill="#f47a5e"/>
+    <circle cx="-84" cy="-4" r="20" fill="#3a3a42"/><circle cx="-84" cy="-4" r="9" fill="#c8c8d2"/>
+    <circle cx="84" cy="-4" r="20" fill="#3a3a42"/><circle cx="84" cy="-4" r="9" fill="#c8c8d2"/>
+    <circle cx="118" cy="-52" r="7" fill="#ffd94d"/>
+    <text x="-10" y="-52" text-anchor="middle" font-size="17" font-weight="bold" fill="#f47a5e" font-family="'Comic Sans MS',cursive">EYA EXPRESS</text>
+  </g>`;
+}
+
+function tricycleSVG(x, y, s = 1) {
+  return `<g class="deco" transform="translate(${x} ${y}) scale(${s})">
+    <path d="M -60 -14 L -60 -58 Q -60 -70 -46 -70 L -6 -70 L -6 -14 Z" fill="#5ec8b8"/>
+    <rect x="-54" y="-62" width="34" height="22" rx="6" fill="#d8f4f0"/>
+    <path d="M -70 -70 Q -34 -92 2 -70 Z" fill="#f47a5e"/>
+    <circle cx="-38" cy="-8" r="14" fill="#3a3a42"/><circle cx="-38" cy="-8" r="6" fill="#c8c8d2"/>
+    <line x1="-6" y1="-52" x2="30" y2="-52" stroke="#5a5a64" stroke-width="5"/>
+    <path d="M 26 -52 L 20 -66 L 32 -66 Z" fill="#5a5a64"/>
+    <circle cx="30" cy="-8" r="16" fill="#3a3a42"/><circle cx="30" cy="-8" r="7" fill="#c8c8d2"/>
+  </g>`;
+}
+
+function sariSariSVG(x, y, s = 1) {
+  return `<g class="deco" transform="translate(${x} ${y}) scale(${s})">
+    <rect x="-70" y="-90" width="140" height="80" rx="6" fill="#e8a86a"/>
+    <path d="M -80 -90 L 0 -122 L 80 -90 Z" fill="#c9564a"/>
+    <rect x="-58" y="-74" width="116" height="34" fill="#7a4a30"/>
+    <circle cx="-40" cy="-60" r="8" fill="#ffd94d"/><circle cx="-16" cy="-58" r="8" fill="#ff8fb5"/>
+    <circle cx="8" cy="-60" r="8" fill="#8ecae6"/><circle cx="32" cy="-58" r="8" fill="#9edb7a"/>
+    <rect x="-58" y="-34" width="116" height="6" fill="#f2c94c"/>
+    <text x="0" y="-98" text-anchor="middle" font-size="19" font-weight="bold" fill="#fff" font-family="'Comic Sans MS',cursive">SARI-SARI</text>
+  </g>`;
+}
+
+function houseSVG(h) {
+  const faces = h.id === 'aunt'
+    ? buildFace(CHARACTERS[h.residents[0]], { x: -33, y: -34, scale: 0.36 }) +
+      buildFace(CHARACTERS[h.residents[1]], { x: 33, y: -34, scale: 0.36 })
+    : buildFace(CHARACTERS[h.residents[0]], { x: 0, y: -32, scale: 0.44 });
+  return `
+  <g class="house" data-house="${h.id}" transform="translate(${h.x} ${h.y})" style="cursor:pointer">
+    <!-- signboard -->
+    <g transform="translate(0 -252)">
+      <rect x="-72" y="-84" width="144" height="112" rx="18" fill="#fffaf2" stroke="#d9c9a8" stroke-width="5"/>
+      ${faces}
+      <text x="0" y="16" text-anchor="middle" font-size="19" font-weight="bold" fill="#8a6a4a" font-family="'Comic Sans MS',cursive">${h.label}</text>
+    </g>
+    <!-- walls -->
+    <rect x="-130" y="-170" width="260" height="170" rx="10" fill="${h.color}"/>
+    <!-- nipa roof -->
+    <path d="M -150 -160 Q 0 -262 150 -160 L 128 -142 Q 0 -222 -128 -142 Z" fill="#9a6a42"/>
+    <path d="M -138 -152 Q 0 -240 138 -152" stroke="#7a5232" stroke-width="7" fill="none"/>
+    <!-- windows -->
+    <g>
+      <rect x="-104" y="-128" width="58" height="52" rx="8" fill="#fffaf2"/>
+      <rect x="-98" y="-122" width="46" height="40" rx="6" fill="#bfe8f2"/>
+      <line x1="-75" y1="-122" x2="-75" y2="-82" stroke="#fffaf2" stroke-width="5"/>
+      <rect x="46" y="-128" width="58" height="52" rx="8" fill="#fffaf2"/>
+      <rect x="52" y="-122" width="46" height="40" rx="6" fill="#bfe8f2"/>
+      <line x1="75" y1="-122" x2="75" y2="-82" stroke="#fffaf2" stroke-width="5"/>
+    </g>
+    <!-- door (hinge at left edge x=-42) -->
+    <g class="doorwrap">
+      <rect x="-44" y="-112" width="88" height="112" rx="8" fill="#6a4a32" opacity="0.35"/>
+      <g class="door">
+        <rect x="-42" y="-110" width="84" height="110" rx="8" fill="#7a5232"/>
+        <rect x="-30" y="-98" width="60" height="38" rx="6" fill="#8a6242"/>
+        <rect x="-30" y="-48" width="60" height="38" rx="6" fill="#8a6242"/>
+        <circle cx="27" cy="-52" r="7" fill="#f2c94c"/>
+      </g>
+    </g>
+    <!-- plants by the door -->
+    <g fill="#4ca858">
+      <ellipse cx="-108" cy="-6" rx="22" ry="16"/><ellipse cx="108" cy="-6" rx="22" ry="16"/>
+    </g>
+    <circle cx="-108" cy="-20" r="7" fill="${h.id === 'joyce' ? '#f47a5e' : '#ffd94d'}"/>
+    <circle cx="108" cy="-20" r="7" fill="#ff8fb5"/>
+  </g>`;
+}
+
+const MAP_DECOR = `
+  ${palmTree(90, 560, 1.1)}
+  ${palmTree(1530, 580, 1.0)}
+  ${palmTree(1480, 340, 0.8)}
+  ${bananaPlant(70, 860, 1.1)}
+  ${bananaPlant(1540, 880, 1.0)}
+  ${sariSariSVG(830, 300, 1)}
+  ${jeepneySVG(380, 838, 1)}
+  ${tricycleSVG(1330, 780, 0.9)}
+  <g fill="#ff8fb5">
+    <circle cx="380" cy="560" r="8"/><circle cx="1210" cy="480" r="8"/><circle cx="700" cy="820" r="8"/>
+    <circle cx="960" cy="860" r="8" fill="#ffd94d"/><circle cx="240" cy="620" r="8" fill="#ffd94d"/>
+    <circle cx="1440" cy="760" r="8" fill="#f47a5e"/>
+  </g>`;
+
 Scenes.map = {
+  cancelWalk: null,
   enter() {
+    Audio.music.start();
+    const spawn = State.mapSpawn || { x: 800, y: 730 };
+
     stage.innerHTML = `
-      <rect width="1600" height="900" fill="#9edb7a"/>
-      <text x="800" y="450" text-anchor="middle" font-size="80"
-        font-family="'Comic Sans MS',cursive" fill="#3d7a52">MAP</text>
+      <defs>
+        <linearGradient id="skyM" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#aee3f5"/><stop offset="1" stop-color="#dff5fd"/>
+        </linearGradient>
+      </defs>
+      <rect id="mapGround0" width="1600" height="900" fill="url(#skyM)"/>
+      <g class="deco" transform="translate(1340,118)">
+        <g>${Array.from({ length: 12 }, (_, i) =>
+          `<rect x="-7" y="-112" width="14" height="38" rx="7" fill="#ffd94d" transform="rotate(${i * 30})"/>`).join('')}
+          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="40s" repeatCount="indefinite"/></g>
+        <circle r="62" fill="#ffe066"/>
+        <circle cx="-19" cy="-8" r="7" fill="#e8a13a"/><circle cx="19" cy="-8" r="7" fill="#e8a13a"/>
+        <path d="M -20 16 Q 0 34 20 16" fill="none" stroke="#e8a13a" stroke-width="7" stroke-linecap="round"/>
+      </g>
+      <g fill="#fff" opacity="0.9">
+        <g><ellipse cx="260" cy="110" rx="80" ry="36"/><ellipse cx="330" cy="94" rx="60" ry="30"/>
+          <animateTransform attributeName="transform" type="translate" values="0 0;140 0;0 0" dur="36s" repeatCount="indefinite"/></g>
+        <g><ellipse cx="760" cy="70" rx="66" ry="28"/>
+          <animateTransform attributeName="transform" type="translate" values="0 0;-120 0;0 0" dur="44s" repeatCount="indefinite"/></g>
+      </g>
+      <rect id="mapGround" x="0" y="240" width="1600" height="660" fill="#9edb7a"/>
+      <path d="M 0 240 Q 400 210 800 240 Q 1200 270 1600 240 L 1600 260 Q 1200 290 800 260 Q 400 230 0 260 Z" fill="#8bcf6b"/>
+      <!-- road loop -->
+      <path id="roadPath" d="M 250 460 Q 420 380 640 366 Q 835 352 1030 366 Q 1250 380 1390 460 Q 1420 540 1120 672 Q 820 740 520 672 Q 220 560 250 460 Z"
+        fill="none" stroke="#e5cda2" stroke-width="86" stroke-linejoin="round"/>
+      <path d="M 250 460 Q 420 380 640 366 Q 835 352 1030 366 Q 1250 380 1390 460 Q 1420 540 1120 672 Q 820 740 520 672 Q 220 560 250 460 Z"
+        fill="none" stroke="#fffaf2" stroke-width="6" stroke-dasharray="26 30" opacity="0.8"/>
+      ${MAP_DECOR}
+      ${HOUSES.map(houseSVG).join('')}
+      <g id="eyaWalk"></g>
+      ${muteButtonSVG()}
     `;
+
+    const eyaG = $('#eyaWalk');
+    const pos = { x: spawn.x, y: spawn.y, facing: 1 };
+    const depthScale = y => clamp(0.42 + (y - 300) / 900 * 0.55, 0.42, 0.78);
+    // build once, move via transform
+    eyaG.innerHTML = buildCharacter(effectiveEyaSpec(), {});
+    const place = (bobY = 0) => {
+      const s = depthScale(pos.y);
+      eyaG.setAttribute('transform', `translate(${pos.x} ${pos.y + bobY}) scale(${s * pos.facing} ${s})`);
+    };
+    place();
+
+    const walkTo = (tx, ty, done) => {
+      if (Scenes.map.cancelWalk) Scenes.map.cancelWalk();
+      ty = clamp(ty, 360, 860);
+      const from = { x: pos.x, y: pos.y };
+      const d = dist(from.x, from.y, tx, ty);
+      if (d < 8) { if (done) done(); return; }
+      pos.facing = tx < from.x ? -1 : 1;
+      const ms = clamp(d / 0.45, 240, 2600);
+      let lastStep = 0;
+      Scenes.map.cancelWalk = tween(ms, t => {
+        const e = easeInOut(t);
+        pos.x = from.x + (tx - from.x) * e;
+        pos.y = from.y + (ty - from.y) * e;
+        const bob = -Math.abs(Math.sin(t * ms / 150)) * 10;
+        if (t * ms - lastStep > 210) { lastStep = t * ms; Audio.sfx('step'); }
+        place(bob);
+      }, () => { Scenes.map.cancelWalk = null; place(); if (done) done(); });
+    };
+
+    // ground taps
+    $('#mapGround').addEventListener('pointerdown', e => {
+      if (App.locked) return;
+      const p = toStage(e.clientX, e.clientY);
+      walkTo(p.x, p.y);
+    });
+
+    // decorations wiggle
+    stage.querySelectorAll('.deco').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        if (App.locked) return;
+        const p = toStage(e.clientX, e.clientY);
+        walkTo(clamp(p.x, 60, 1540), clamp(p.y + 60, 360, 860));
+        Audio.sfx('pop');
+        const base = el.getAttribute('transform') || '';
+        tween(500, t => {
+          el.setAttribute('transform', `${base} rotate(${Math.sin(t * Math.PI * 4) * 4})`);
+        }, () => el.setAttribute('transform', base));
+      });
+    });
+
+    // houses: walk to door, knock, "Tao po!", door opens, enter
+    stage.querySelectorAll('.house').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        if (App.locked) return;
+        const h = HOUSES.find(x => x.id === el.dataset.house);
+        walkTo(h.x + 70, h.y + 34, () => {
+          App.locked = true;
+          Audio.sfx('knock');
+          setTimeout(() => Audio.say('Tao po!'), 350);
+          const door = el.querySelector('.door');
+          setTimeout(() => {
+            tween(450, t => {
+              const k = Math.max(0.12, Math.cos(t * 1.35)); // swing around left hinge
+              door.setAttribute('transform', `translate(-42 0) scale(${k} 1) translate(42 0)`);
+            });
+            Audio.sfx('chime');
+          }, 1050);
+          setTimeout(() => {
+            State.mapSpawn = { x: h.x + 70, y: h.y + 34 };
+            App.locked = false;
+            App.go('house:' + h.id);
+          }, 1700);
+        });
+      });
+    });
+
+    wireMuteButton();
+  },
+  exit() {
+    if (Scenes.map.cancelWalk) Scenes.map.cancelWalk();
+    Scenes.map.cancelWalk = null;
+  }
+};
+
+// ---- House interior placeholder (real interiors in Task 5)
+Scenes.house = {
+  enter(houseId) {
+    const h = HOUSES.find(x => x.id === houseId);
+    stage.innerHTML = `
+      <rect width="1600" height="900" fill="#f4e8d8"/>
+      ${h.residents.map((r, i) =>
+        buildCharacter(CHARACTERS[r], { x: 600 + i * 220, y: 700, scale: 0.9, idle: true })).join('')}
+      <g id="homeBtn" style="cursor:pointer">
+        <circle cx="90" cy="810" r="58" fill="#fff" opacity="0.9"/>
+        <text x="90" y="834" text-anchor="middle" font-size="60">🏠</text>
+      </g>
+      ${muteButtonSVG()}
+    `;
+    $('#homeBtn').addEventListener('pointerdown', () => App.go('map'));
+    wireMuteButton();
   },
   exit() {}
 };
@@ -740,7 +1011,8 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
-App.go(location.hash === '#lineup' ? 'lineup' : 'title');
+// #lineup and #map are debug entry points
+App.go(location.hash === '#lineup' ? 'lineup' : location.hash === '#map' ? 'map' : 'title');
 </script>
 </body>
 </html>
