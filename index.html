@@ -656,6 +656,70 @@ function waveCharacter(gEl) {
   }, () => arm.setAttribute('transform', ''));
 }
 
+// Raise and hold the right arm (for a high-five).
+function raiseArm(gEl) {
+  const arm = gEl.querySelector('.armR');
+  if (!arm) return;
+  tween(900, t => {
+    const a = -100 * Math.min(1, t * 3) * (t > 0.7 ? (1 - (t - 0.7) / 0.3) : 1);
+    arm.setAttribute('transform', `rotate(${a} 50 -180)`);
+  }, () => arm.setAttribute('transform', ''));
+}
+
+// Little floaters (hearts or stars) rising from a point, drawn into `layer`.
+function floaters(layer, x, y, kind) {
+  if (!layer) return;
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  layer.appendChild(g);
+  const heart = c => `<path d="M 0 8 C -12 -2 -9 -14 -2 -9 Q 0 -7 0 -4 Q 0 -7 2 -9 C 9 -14 12 -2 0 8 Z" fill="${c}"/>`;
+  const star = c => `<path d="M 0 -11 L 3 -3 L 11 -3 L 4 2 L 7 10 L 0 5 L -7 10 L -4 2 L -11 -3 L -3 -3 Z" fill="${c}"/>`;
+  const cols = kind === 'heart' ? ['#ff8fb5', '#f47a5e', '#ff5a8a'] : ['#ffd94d', '#ffe066', '#f2c94c'];
+  const bits = Array.from({ length: 7 }, () => ({
+    x: x + rand(-50, 50), y: y + rand(-10, 10),
+    vx: rand(-40, 40), vy: rand(-150, -90), s: rand(1.4, 2.6), c: pick(cols), rot: rand(-30, 30),
+  }));
+  tween(1200, t => {
+    g.innerHTML = bits.map(b => `<g transform="translate(${b.x + b.vx * t} ${b.y + b.vy * t}) scale(${b.s}) rotate(${b.rot})" opacity="${1 - t}">${
+      kind === 'heart' ? heart(b.c) : star(b.c)}</g>`).join('');
+  }, () => g.remove());
+}
+
+// Hug + high-five action buttons above a person Eya has walked up to.
+function showPersonActions(personEl, eyaEl, px, py, layer) {
+  if (!layer) return;
+  layer.querySelectorAll('.pAct').forEach(n => n.remove());
+  const by = py - 320;
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'pAct');
+  g.innerHTML = `
+    <g class="hugBtn" transform="translate(${px - 66} ${by})" style="cursor:pointer">
+      <circle r="50" fill="#fff" stroke="#ff8fb5" stroke-width="6"/><text y="17" text-anchor="middle" font-size="46">🤗</text>
+    </g>
+    <g class="hiBtn" transform="translate(${px + 66} ${by})" style="cursor:pointer">
+      <circle r="50" fill="#fff" stroke="#8ecae6" stroke-width="6"/><text y="17" text-anchor="middle" font-size="46">✋</text>
+    </g>`;
+  layer.appendChild(g);
+  const auto = setTimeout(() => g.remove(), 5000);
+  g.querySelector('.hugBtn').addEventListener('pointerdown', e => {
+    e.stopPropagation(); clearTimeout(auto); g.remove();
+    Audio.sfx('giggle');
+    [[personEl, -8], [eyaEl, 8]].forEach(([el, dir]) => {
+      if (!el) return;
+      const base = el.getAttribute('transform') || '';
+      tween(800, t => el.setAttribute('transform', `${base} rotate(${Math.sin(t * Math.PI) * dir})`),
+        () => el.setAttribute('transform', base));
+    });
+    floaters(layer, px, py - 200, 'heart');
+  });
+  g.querySelector('.hiBtn').addEventListener('pointerdown', e => {
+    e.stopPropagation(); clearTimeout(auto); g.remove();
+    if (personEl) raiseArm(personEl);
+    if (eyaEl) raiseArm(eyaEl);
+    Audio.sfx('clap');
+    floaters(layer, px, py - 180, 'star');
+  });
+}
+
 // ---- The family (anchors from the photo folders)
 const CHARACTERS = {
   eya: {
@@ -1264,7 +1328,6 @@ const MAP_DECOR = `
   ${bananaPlant(1540, 880, 1.0)}
   ${sariSariSVG(830, 300, 1)}
   ${jeepneySVG(380, 838, 1)}
-  ${tricycleSVG(1330, 780, 0.9)}
   <g fill="#ff8fb5">
     <circle cx="380" cy="560" r="8"/><circle cx="1210" cy="480" r="8"/><circle cx="700" cy="820" r="8"/>
     <circle cx="960" cy="860" r="8" fill="#ffd94d"/><circle cx="240" cy="620" r="8" fill="#ffd94d"/>
@@ -1326,6 +1389,7 @@ Scenes.map = {
         <path d="M 1388 460 Q 1800 430 2200 470 Q 2700 520 3100 500 Q 3600 470 ${WORLD_W} 520"
           fill="none" stroke="#fffaf2" stroke-width="6" stroke-dasharray="26 30" opacity="0.8"/>
         ${MAP_DECOR}
+        ${mapToysSVG()}
         ${playgroundSVG()}
         ${HOUSES.map(houseSVG).join('')}
         ${schoolSVG(PLACES[0])}
@@ -1369,8 +1433,9 @@ Scenes.map = {
       });
     });
 
-    // playground interactive pieces
+    // playground + scattered toys
     this.wirePlayground(world, eya);
+    this.wireMapToys(world, eya);
 
     // door sequence shared by houses (data-house) and places (data-place)
     const enterViaDoor = (el, doorX, doorY, target, spawnBack) => {
@@ -1415,6 +1480,126 @@ Scenes.map = {
 
     wireMuteButton();
   },
+  wireMapToys(world, eya) {
+    const eyaEl = $('#eyaWalk');
+    const restore = (x, y) => { eya.pos.x = x; eya.pos.y = y; eya.place(); };
+
+    // DOG — pet it: tail wags + bark
+    const dog = world.querySelector('[data-toy="dog"]');
+    if (dog) dog.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(830, 560, 130, () => {
+        Audio.sfx('bark');
+        const tail = dog.querySelector('.dogTail');
+        tween(900, t => { if (tail) tail.setAttribute('transform', `rotate(${Math.sin(t * Math.PI * 6) * 24} 40 0)`); },
+          () => { if (tail) tail.setAttribute('transform', ''); });
+      });
+    });
+
+    // BUBBLE WAND — puff out bubbles that float and pop when tapped
+    const wand = world.querySelector('[data-toy="bubbles"]');
+    if (wand) wand.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(150, 640, 120, () => {
+        Audio.sfx('pop');
+        for (let i = 0; i < 8; i++) {
+          const b = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          b.setAttribute('style', 'cursor:pointer');
+          const r = rand(16, 30);
+          b.innerHTML = `<circle r="${r}" fill="#bfe8f2" opacity="0.5" stroke="#8ecae6" stroke-width="3"/>
+            <circle cx="${-r / 3}" cy="${-r / 3}" r="${r / 4}" fill="#fff" opacity="0.8"/>`;
+          world.appendChild(b);
+          const sx = 165 + rand(-10, 10), sy = 540;
+          let popped = false;
+          b.addEventListener('pointerdown', ev => { ev.stopPropagation(); if (!popped) { popped = true; Audio.sfx('pop'); b.remove(); } });
+          const drift = rand(-120, 120), rise = rand(360, 520), dur = rand(2600, 4200);
+          tween(dur, t => b.setAttribute('transform', `translate(${sx + drift * t + Math.sin(t * 8) * 14} ${sy - rise * t})`),
+            () => { if (!popped) b.remove(); });
+        }
+      });
+    });
+
+    // KITE — make it climb and sway
+    const kite = world.querySelector('[data-toy="kite"]');
+    const kiteBody = world.querySelector('#kiteBody'), kiteString = world.querySelector('#kiteString');
+    if (kite) kite.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(1980, 800, 160, () => {
+        Audio.sfx('whee');
+        tween(5000, t => {
+          const climb = Math.sin(Math.min(1, t * 2) * Math.PI / 2); // rise then hold
+          const y = 430 - climb * 120;
+          const x = 2060 + Math.sin(t * Math.PI * 6) * 60;
+          if (kiteBody) kiteBody.setAttribute('transform', `translate(${x} ${y}) rotate(${Math.sin(t * Math.PI * 6) * 12})`);
+          if (kiteString) { kiteString.setAttribute('x2', x); kiteString.setAttribute('y2', y); }
+        }, () => {
+          if (kiteBody) kiteBody.setAttribute('transform', 'translate(2060 430)');
+          if (kiteString) { kiteString.setAttribute('x2', 2060); kiteString.setAttribute('y2', 430); }
+        });
+      });
+    });
+
+    // JUMP ROPE — Eya hops three times
+    const rope = world.querySelector('[data-toy="rope"]');
+    const ropeArc = world.querySelector('#ropeArc');
+    if (rope) rope.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(2600, 810, 110, () => {
+        App.locked = true;
+        eya.stop();
+        const baseX = 2600, baseY = 810;
+        tween(1800, t => {
+          const phase = t * 3; // 3 jumps
+          const hop = Math.abs(Math.sin(phase * Math.PI)) * 70;
+          const s = eya.scaleFn ? eya.scaleFn(baseY) : 1;
+          eyaEl.setAttribute('transform', `translate(${baseX} ${baseY - hop}) scale(${s})`);
+          if (ropeArc) {
+            const swing = Math.cos(phase * Math.PI * 2);
+            ropeArc.setAttribute('d', `M -46 -10 Q 0 ${20 + swing * 50} 46 -10`);
+          }
+          if (hop > 60 && !rope.dataset.b) { rope.dataset.b = '1'; Audio.sfx('boing'); }
+          else if (hop < 20) rope.dataset.b = '';
+        }, () => { if (ropeArc) ropeArc.setAttribute('d', 'M -46 -10 Q 0 60 46 -10'); restore(2600, 810); App.locked = false; });
+      });
+    });
+
+    // TRICYCLE — hop on and ride east a short way, then hop off
+    const trike = world.querySelector('[data-toy="trike"]');
+    const trikeArt = world.querySelector('.trikeArt');
+    if (trike) trike.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      if (App.locked) return;
+      eya.approach(1330, 810, 120, () => {
+        App.locked = true;
+        eya.stop();
+        eyaEl.setAttribute('opacity', '0');
+        const startX = 1330, endX = 1900;
+        let putt = 0;
+        tween(3200, t => {
+          const x = startX + (endX - startX) * easeInOut(t);
+          if (trikeArt) trikeArt.setAttribute('transform', `translate(${x - 1330} 0)`);
+          // Eya rides on top
+          const s = (eya.scaleFn ? eya.scaleFn(810) : 1) * 0.9;
+          eyaEl.setAttribute('opacity', '1');
+          eyaEl.setAttribute('transform', `translate(${x - 6} 748) scale(${s})`);
+          if (t * 3200 - putt > 260) { putt = t * 3200; Audio.sfx('bounce'); }
+          eya.pos.x = x; eya.pos.y = 810;
+          this.camX = clamp(x - 800, 0, WORLD_W - 1600);
+          world.setAttribute('transform', `translate(${-this.camX} 0)`);
+        }, () => {
+          if (trikeArt) trikeArt.setAttribute('transform', 'translate(0 0)'); // trike rolls home (off-screen left)
+          eyaEl.setAttribute('opacity', '1');
+          restore(endX + 70, 810);
+          App.locked = false;
+        });
+      });
+    });
+  },
+
   wirePlayground(world, eya) {
     const eyaEl = $('#eyaWalk');
     const restore = (x, y) => { eya.pos.x = x; eya.pos.y = y; eya.place(); };
@@ -1540,6 +1725,50 @@ Scenes.map = {
   }
 };
 
+// Extra outdoor toys scattered around the map (absolute world coords).
+function mapToysSVG() {
+  return `<g id="mapToys">
+    <!-- friendly dog near Lola's house -->
+    <g class="toy" data-toy="dog" transform="translate(830 500)" style="cursor:pointer">
+      <ellipse cx="0" cy="6" rx="46" ry="30" fill="#c9905a"/>
+      <path class="dogTail" d="M 40 0 Q 74 -6 70 -34" stroke="#c9905a" stroke-width="12" fill="none" stroke-linecap="round"/>
+      <rect x="-34" y="20" width="12" height="22" rx="5" fill="#b8804a"/>
+      <rect x="22" y="20" width="12" height="22" rx="5" fill="#b8804a"/>
+      <circle cx="-42" cy="-24" r="28" fill="#c9905a"/>
+      <path d="M -64 -40 Q -74 -14 -58 -6 Z" fill="#b8804a"/>
+      <ellipse cx="-52" cy="0" rx="14" ry="10" fill="#e8c090"/>
+      <circle cx="-50" cy="-28" r="4" fill="#241812"/><circle cx="-34" cy="-26" r="4" fill="#241812"/>
+      <ellipse cx="-56" cy="-6" rx="6" ry="4" fill="#3a2a1a"/>
+    </g>
+
+    <!-- bubble wand near Bahay ni Eya -->
+    <g class="toy" data-toy="bubbles" transform="translate(140 560)" style="cursor:pointer">
+      <line x1="0" y1="60" x2="18" y2="-6" stroke="#8a5f3c" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="22" cy="-20" r="22" fill="none" stroke="#8ecae6" stroke-width="7"/>
+      <circle cx="22" cy="-20" r="15" fill="#bfe8f2" opacity="0.4"/>
+    </g>
+
+    <!-- kite flying in the field -->
+    <g class="toy" data-toy="kite" style="cursor:pointer">
+      <line id="kiteString" x1="1980" y1="780" x2="2060" y2="430" stroke="#c9b090" stroke-width="2"/>
+      <g id="kiteBody" transform="translate(2060 430)">
+        <path d="M 0 -46 L 34 0 L 0 46 L -34 0 Z" fill="#ff8fb5"/>
+        <path d="M 0 -46 L 0 46 M -34 0 L 34 0" stroke="#fff" stroke-width="3"/>
+        <path d="M 0 46 q 10 20 -6 30 q 16 10 6 30" stroke="#f47a5e" stroke-width="4" fill="none"/>
+      </g>
+    </g>
+
+    <!-- jump rope by the playground entrance -->
+    <g class="toy" data-toy="rope" transform="translate(2600 800)" style="cursor:pointer">
+      <path id="ropeArc" d="M -46 -10 Q 0 60 46 -10" stroke="#e05a6a" stroke-width="6" fill="none"/>
+      <circle cx="-46" cy="-10" r="8" fill="#ffd94d"/><circle cx="46" cy="-10" r="8" fill="#ffd94d"/>
+    </g>
+
+    <!-- rideable tricycle on the road -->
+    <g class="toy" data-toy="trike" style="cursor:pointer">${tricycleSVG(1330, 790, 1).replace('class="deco"', 'class="trikeArt"')}</g>
+  </g>`;
+}
+
 // Playground — a cluster of outdoor play equipment in the town field (absolute world coords).
 function playgroundSVG() {
   const butterfly = (cx, cy, c, dur, path) => `
@@ -1651,7 +1880,7 @@ Scenes.place = {
     return eya;
   },
 
-  // person that Eya walks up to, then waves + speaks
+  // person that Eya walks up to, then waves + speaks + offers hug/high-five
   wirePerson(el, x, y, line) {
     el.addEventListener('pointerdown', e => {
       e.stopPropagation();
@@ -1659,6 +1888,7 @@ Scenes.place = {
         waveCharacter(el);
         Audio.sfx('chime');
         Audio.say(line);
+        showPersonActions(el.firstElementChild, $('#eyaWalkP').firstElementChild, x, y, $('#uiLayerP'));
       });
     });
   },
@@ -2391,6 +2621,7 @@ Scenes.house = {
           waveCharacter(el);
           Audio.sfx('chime');
           Audio.say(CHARACTERS[el.dataset.key].label);
+          showPersonActions(el.firstElementChild, $('#eyaWalkH').firstElementChild, rp.x, rp.y, $('#uiLayerH'));
         });
       });
     });
