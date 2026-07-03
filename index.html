@@ -787,6 +787,31 @@ const CHARACTERS = {
     top: { type: 'polo', color: '#fbfbfd' },
     bottom: { type: 'pants', color: '#3a3a44' }, shoes: { type: 'slipons', color: '#3a3a3a' },
   },
+  // ---- Church kids (3 boys, 3 girls; cartoon faces)
+  churchBoy1: {
+    label: 'Jun', skin: '#e0a878', hairColor: '#1c1410', hair: 'shortSpiky', smile: 'grin',
+    top: { type: 'polo', color: '#8ecae6' }, bottom: { type: 'pants', color: '#3a4a6a' }, shoes: { type: 'sneakers', color: '#e05a6a' },
+  },
+  churchBoy2: {
+    label: 'Paolo', skin: '#f0c49a', hairColor: '#241812', hair: 'shortNeat', smile: 'open',
+    top: { type: 'tshirt', color: '#9edb7a' }, bottom: { type: 'shorts', color: '#5a5a64' }, shoes: { type: 'slipons', color: '#4a4a54' },
+  },
+  churchBoy3: {
+    label: 'Kevin', skin: '#d99a6a', hairColor: '#1c1410', hair: 'shortSpiky', smile: 'grin',
+    top: { type: 'polo', color: '#ffd94d' }, bottom: { type: 'shorts', color: '#c94f5c' }, shoes: { type: 'sneakers', color: '#4a90d9' },
+  },
+  churchGirl1: {
+    label: 'Sofia', skin: '#f4cba6', hairColor: '#241812', hair: 'longStraight', hat: 'bow', smile: 'open', socks: true,
+    top: { type: 'dress', color: '#ff8fb5', collar: '#fffaf2' }, bottom: null, shoes: { type: 'maryjane', color: '#fff' },
+  },
+  churchGirl2: {
+    label: 'Bea', skin: '#e8b88e', hairColor: '#2a1c14', hair: 'ponytail', smile: 'soft', socks: true,
+    top: { type: 'dress', color: '#c9a0f0', collar: '#fffaf2' }, bottom: null, shoes: { type: 'maryjane', color: '#7a5aa0' },
+  },
+  churchGirl3: {
+    label: 'Grace', skin: '#f2c9a4', hairColor: '#3a281c', hair: 'shoulderBob', smile: 'open', socks: true,
+    top: { type: 'dress', color: '#9edb7a', collar: '#fffaf2' }, bottom: null, shoes: { type: 'sneakers', color: '#ff8fb5' },
+  },
 };
 
 // ============================================================ WALKER
@@ -1225,9 +1250,10 @@ function schoolSVG(p) {
       <rect x="138" y="-170" width="70" height="62" rx="8" fill="#fffaf2"/>
       <rect x="146" y="-162" width="54" height="46" rx="6" fill="#bfe8f2"/>
     </g>
-    <g transform="translate(0 -244)">
-      <rect x="-140" y="-40" width="280" height="58" rx="12" fill="#fffaf2" stroke="#d9c9a8" stroke-width="4"/>
-      ${bigLabel(0, 4, '🏫 Paaralan', { size: 32, fill: '#6a4a2a', stroke: '#fffaf2' })}
+    <g transform="translate(0 -250)">
+      <rect x="-176" y="-46" width="352" height="76" rx="12" fill="#fffaf2" stroke="#d9c9a8" stroke-width="4"/>
+      ${bigLabel(0, -14, '🏫 Paaralan', { size: 30, fill: '#6a4a2a', stroke: '#fffaf2' })}
+      ${bigLabel(0, 16, 'Barangay Sabang Day Care', { size: 17, fill: '#8a6a4a', stroke: '#fffaf2' })}
     </g>
     <g class="doorwrap" transform="translate(90 0)">
       <rect x="-44" y="-112" width="88" height="112" rx="8" fill="#6a4a32" opacity="0.35"/>
@@ -1848,10 +1874,10 @@ Scenes.place = {
   },
 
   // ---- shared: spawn Eya walker + home button + mute, return the walker
-  finishRoom() {
+  finishRoom(sx = 200, sy = 820) {
     const eya = this.eya = makeWalker({
       g: $('#eyaWalkP'), spec: effectiveEyaSpec(),
-      x: 200, y: 820, bounds: INTERIOR_BOUNDS, scaleFn: interiorScale,
+      x: sx, y: sy, bounds: INTERIOR_BOUNDS, scaleFn: interiorScale,
       uiLayer: $('#uiLayerP'),
     });
     eya.attachGround($('#roomGround'));
@@ -2096,18 +2122,45 @@ Scenes.place = {
       </g>`;
     const pew = (x, y) => `
       <g data-pew="1" transform="translate(${x} ${y})" style="cursor:pointer">
-        <rect x="-90" y="-40" width="180" height="16" rx="5" fill="#9a6a42"/>
-        <rect x="-90" y="-2" width="180" height="20" rx="5" fill="#a87c4a"/>
-        <rect x="-84" y="14" width="14" height="40" fill="#8a5f3c"/>
-        <rect x="70" y="14" width="14" height="40" fill="#8a5f3c"/>
+        <rect x="-72" y="-40" width="144" height="16" rx="5" fill="#9a6a42"/>
+        <rect x="-72" y="-2" width="144" height="20" rx="5" fill="#a87c4a"/>
+        <rect x="-66" y="14" width="14" height="40" fill="#8a5f3c"/>
+        <rect x="52" y="14" width="14" height="40" fill="#8a5f3c"/>
       </g>`;
+    const bench = (cx, y, w) => `
+      <rect x="${cx - w / 2}" y="${y - 16}" width="${w}" height="16" rx="5" fill="#9a6a42"/>
+      <rect x="${cx - w / 2}" y="${y}" width="${w}" height="20" rx="5" fill="#a87c4a"/>
+      <rect x="${cx - w / 2 + 8}" y="${y + 18}" width="14" height="42" fill="#8a5f3c"/>
+      <rect x="${cx + w / 2 - 22}" y="${y + 18}" width="14" height="42" fill="#8a5f3c"/>`;
+
+    // Congregation: all family members (with photos) in the front pews,
+    // and six church kids in the back pews.
+    const congFront = [
+      { key: 'daddy', x: 210, y: 812, s: 0.5 }, { key: 'mommy', x: 380, y: 812, s: 0.5 },
+      { key: 'lola', x: 550, y: 812, s: 0.5 }, { key: 'titoBoy', x: 1080, y: 812, s: 0.5 },
+      { key: 'antle', x: 1240, y: 812, s: 0.5 },
+    ];
+    const congBack = [
+      { key: 'churchBoy1', x: 220, y: 702, s: 0.44 }, { key: 'churchGirl1', x: 370, y: 702, s: 0.44 },
+      { key: 'churchBoy2', x: 520, y: 702, s: 0.44 }, { key: 'churchGirl2', x: 1080, y: 722, s: 0.44 },
+      { key: 'churchBoy3', x: 1230, y: 722, s: 0.44 }, { key: 'churchGirl3', x: 1380, y: 722, s: 0.44 },
+    ];
+    const congPerson = (p, cls) =>
+      `<g class="${cls}" data-key="${p.key}" data-x="${p.x}" data-y="${p.y}" style="cursor:pointer">${
+        buildCharacter(CHARACTERS[p.key], { x: p.x, y: p.y, scale: p.s, idle: true })}</g>`;
+    const congregation =
+      congBack.map(p => congPerson(p, 'congKid')).join('') +
+      bench(370, 672, 400) + bench(1230, 692, 400) +
+      congFront.map(p => congPerson(p, 'congFam')).join('') +
+      bench(380, 788, 460) + bench(1160, 788, 380);
+
     stage.innerHTML = `
       <rect width="1600" height="640" fill="#f3e3c6"/>
       <rect y="600" width="1600" height="300" fill="#b98a5a"/>
       ${Array.from({ length: 5 }, (_, i) => `<line x1="0" y1="${660 + i * 50}" x2="1600" y2="${660 + i * 50}" stroke="#a87c4a" stroke-width="3"/>`).join('')}
       <rect y="590" width="1600" height="18" fill="#9a6a42"/>
       <!-- aisle runner -->
-      <path d="M 800 600 L 640 900 L 960 900 Z" fill="#c94f5c" opacity="0.5"/>
+      <path d="M 800 600 L 700 900 L 900 900 Z" fill="#c94f5c" opacity="0.5"/>
       <!-- altar with cross -->
       <g transform="translate(800 250)">
         <rect x="-120" y="120" width="240" height="120" rx="10" fill="#a87c4a"/>
@@ -2116,30 +2169,31 @@ Scenes.place = {
           <line x1="0" y1="-30" x2="0" y2="110"/>
           <line x1="-44" y1="14" x2="44" y2="14"/>
         </g>
-        <!-- flowers on the altar -->
         ${[-80, 80].map(dx => `<g transform="translate(${dx} 130)">
           ${[0, 72, 144, 216, 288].map(a => `<ellipse cx="0" cy="-22" rx="8" ry="12" fill="#ff8fb5" transform="rotate(${a})"/>`).join('')}
           <circle r="7" fill="#ffd94d"/><line x1="0" y1="0" x2="0" y2="30" stroke="#4ca858" stroke-width="5"/></g>`).join('')}
       </g>
+      <!-- invisible tap-catcher for walking (must sit under all interactive things) -->
+      <rect id="roomGround" width="1600" height="900" fill="#000" opacity="0"/>
       ${glass(250, ['#8ecae6', '#9edb7a', '#ffd94d', '#ff8fb5', '#c9a0f0'])}
       ${glass(1350, ['#ff8fb5', '#ffd94d', '#9edb7a', '#8ecae6', '#f47a5e'])}
       <!-- choir on a riser -->
       <g id="choir" style="cursor:pointer" data-choir="1">
-        <rect x="1120" y="560" width="300" height="30" rx="6" fill="#a87c4a"/>
+        <rect x="1120" y="540" width="300" height="30" rx="6" fill="#a87c4a"/>
         ${['auntie', 'titaJoyce', 'titaKath'].map((k, i) =>
-          `<g class="choirMember">${buildCharacter(CHARACTERS[k], { x: 1180 + i * 90, y: 560, scale: 0.42, idle: true })}</g>`).join('')}
-        ${bigLabel(1270, 690, '🎵', { size: 40, fill: '#fff', stroke: '#8a6a3a' })}
+          `<g class="choirMember">${buildCharacter(CHARACTERS[k], { x: 1180 + i * 90, y: 540, scale: 0.4, idle: true })}</g>`).join('')}
+        ${bigLabel(1450, 430, '🎵', { size: 40, fill: '#fff', stroke: '#8a6a3a' })}
       </g>
-      ${pew(430, 760)}
-      ${pew(430, 850)}
-      <rect id="roomGround" width="1600" height="900" fill="#000" opacity="0"/>
+      <g id="congregation">${congregation}</g>
+      ${pew(600, 885)}
+      ${pew(1000, 885)}
       <g id="peopleLayer"></g>
       <!-- offering basket on a stand -->
-      <g id="basketStand" transform="translate(1050 820)">
-        <rect x="-8" y="0" width="16" height="60" fill="#8a5f3c"/>
-        <path d="M -50 -30 L 50 -30 L 40 24 L -40 24 Z" fill="#c9a06a"/>
-        <path d="M -50 -30 Q 0 -74 50 -30" stroke="#a87c4a" stroke-width="8" fill="none"/>
-        <path d="M -44 -16 L 44 -16 M -40 0 L 40 0" stroke="#a87c4a" stroke-width="4"/>
+      <g id="basketStand" transform="translate(760 878)">
+        <rect x="-8" y="0" width="16" height="40" fill="#8a5f3c"/>
+        <path d="M -44 -26 L 44 -26 L 36 20 L -36 20 Z" fill="#c9a06a"/>
+        <path d="M -44 -26 Q 0 -66 44 -26" stroke="#a87c4a" stroke-width="8" fill="none"/>
+        <path d="M -40 -14 L 40 -14 M -36 0 L 36 0" stroke="#a87c4a" stroke-width="4"/>
       </g>
       <g id="propLayer"></g>
       <g id="eyaWalkP"></g>
@@ -2155,11 +2209,27 @@ Scenes.place = {
     // pastor by the altar
     $('#peopleLayer').innerHTML =
       `<g class="person" data-key="pastor" style="cursor:pointer">${
-        buildCharacter(CHARACTERS.pastor, { x: 640, y: 720, scale: 0.72, idle: true })
+        buildCharacter(CHARACTERS.pastor, { x: 760, y: 560, scale: 0.6, idle: true })
       }</g>`;
 
-    const eya = this.finishRoom();
-    this.wirePerson($('.person[data-key="pastor"]'), 640, 720, 'Welcome, Eya! God bless you!');
+    const eya = this.finishRoom(800, 872);
+    this.wirePerson($('.person[data-key="pastor"]'), 760, 560, 'Welcome, Eya! God bless you!');
+
+    // family in the pews: walk up, wave + name + hug/high-five
+    stage.querySelectorAll('.congFam').forEach(el => {
+      this.wirePerson(el, +el.dataset.x, +el.dataset.y, CHARACTERS[el.dataset.key].label);
+    });
+    // church kids: walk up, wave + happy giggle + name
+    stage.querySelectorAll('.congKid').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        eya.approach(+el.dataset.x, +el.dataset.y, 170, () => {
+          waveCharacter(el.firstElementChild);
+          Audio.sfx('giggle');
+          Audio.say(CHARACTERS[el.dataset.key].label);
+        });
+      });
+    });
 
     // stained-glass twinkle
     stage.querySelectorAll('[data-glass="1"]').forEach(g => {
@@ -2183,7 +2253,7 @@ Scenes.place = {
 
     // offering: drag a coin into the basket
     $('#propLayer').innerHTML = `
-      <g class="prop" data-id="coin" data-x="880" data-y="840" data-s="1" transform="translate(880 840)" style="cursor:pointer">
+      <g class="prop" data-id="coin" data-x="560" data-y="860" data-s="1" transform="translate(560 860)" style="cursor:pointer">
         <circle r="30" fill="#f2c94c" stroke="#d9a834" stroke-width="4"/>
         <circle r="22" fill="#ffe066"/>
         <text x="0" y="10" text-anchor="middle" font-size="30" font-weight="bold" fill="#c99a2a" font-family="sans-serif">₱</text>
@@ -2191,15 +2261,15 @@ Scenes.place = {
     const coin = $('.prop[data-id="coin"]');
     makeDraggable(coin, {
       onDrop: (x, y) => {
-        if (dist(x, y, 1050, 800) < 150) {
+        if (dist(x, y, 760, 858) < 150) {
           Audio.sfx('coin');
-          tween(500, t => coin.setAttribute('transform', `translate(1050 ${800 + t * 20}) scale(${1 - t})`),
+          tween(500, t => coin.setAttribute('transform', `translate(760 ${858 + t * 20}) scale(${1 - t})`),
             () => {
               Audio.say('Salamat, Eya!');
-              setTimeout(() => { setXY(coin, 880, 840); coin.setAttribute('transform', 'translate(880 840)'); }, 2000);
+              setTimeout(() => { setXY(coin, 560, 860); coin.setAttribute('transform', 'translate(560 860)'); }, 2000);
             });
         } else {
-          setXY(coin, 880, 840);
+          setXY(coin, 560, 860);
         }
       },
     });
