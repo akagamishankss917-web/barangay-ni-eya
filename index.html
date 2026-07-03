@@ -972,23 +972,439 @@ Scenes.map = {
   }
 };
 
-// ---- House interior placeholder (real interiors in Task 5)
+// ============================================================ INTERIORS
+function lighten(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const L = v => Math.round(v + (255 - v) * f);
+  return `rgb(${L(n >> 16 & 255)},${L(n >> 8 & 255)},${L(n & 255)})`;
+}
+
+// ---- prop art (each centered on its own origin)
+const PROP_ART = {
+  wardrobe: () => `
+    <rect x="-95" y="-290" width="190" height="290" rx="16" fill="#e89ab8"/>
+    <rect x="-82" y="-276" width="76" height="240" rx="10" fill="#f6bcd4"/>
+    <rect x="6" y="-276" width="76" height="240" rx="10" fill="#f6bcd4"/>
+    <circle cx="-16" cy="-150" r="9" fill="#fff"/><circle cx="16" cy="-150" r="9" fill="#fff"/>
+    <path d="M 0 -238 L 10 -224 A 14 14 0 1 1 -10 -224 Z" fill="#ff6f9c" transform="rotate(180 0 -226)"/>`,
+  unicorn: () => `
+    <path d="M -95 60 Q 0 96 95 60" stroke="#c9a06a" stroke-width="12" fill="none" stroke-linecap="round"/>
+    <line x1="-60" y1="18" x2="-72" y2="64" stroke="#c9a06a" stroke-width="11"/>
+    <line x1="60" y1="18" x2="72" y2="64" stroke="#c9a06a" stroke-width="11"/>
+    <ellipse cx="0" cy="-10" rx="70" ry="44" fill="#f8c8d8"/>
+    <rect x="-14" y="-52" width="28" height="30" rx="10" fill="#e8a8c0"/>
+    <circle cx="52" cy="-58" r="34" fill="#f8c8d8"/>
+    <path d="M 76 -66 Q 96 -60 92 -44 Q 80 -50 72 -52 Z" fill="#f0b0c8"/>
+    <path d="M 58 -88 L 66 -122 L 76 -88 Z" fill="#f2c94c"/>
+    <path d="M 30 -88 Q 10 -60 26 -34 Q 38 -60 44 -84 Z" fill="#7ad8d0"/>
+    <circle cx="58" cy="-60" r="5" fill="#241812"/>
+    <ellipse cx="-2" cy="-40" rx="20" ry="10" fill="#e85a8a"/>
+    <path d="M -50 -34 Q -70 -70 -44 -76" stroke="#7ad8d0" stroke-width="10" fill="none" stroke-linecap="round"/>`,
+  cake: () => `
+    <ellipse cx="0" cy="26" rx="64" ry="14" fill="#fff"/>
+    <path d="M -54 26 L -54 -8 Q 0 6 54 -8 L 54 26 Q 0 40 -54 26 Z" fill="#f8b8cc"/>
+    <path d="M -54 -8 Q -54 -24 -38 -22 Q 0 -14 38 -22 Q 54 -24 54 -8 Q 0 6 -54 -8 Z" fill="#fde8f0"/>
+    <path d="M -40 -20 q 4 10 8 0 q 4 10 8 0 q 4 10 8 0 q 4 10 8 0 q 4 10 8 0 q 4 10 8 0 q 4 10 8 0" stroke="#fde8f0" stroke-width="5" fill="none"/>
+    <rect x="-4" y="-52" width="8" height="30" rx="3" fill="#ffd94d"/>
+    <ellipse cx="0" cy="-56" rx="6" ry="9" fill="#ffb347"/>
+    <circle cx="-28" cy="8" r="5" fill="#e85a8a"/><circle cx="0" cy="12" r="5" fill="#e85a8a"/><circle cx="28" cy="8" r="5" fill="#e85a8a"/>`,
+  pillow: (c = '#f6a8c9') => `
+    <path d="M -60 -34 Q 0 -46 60 -34 Q 72 0 60 34 Q 0 46 -60 34 Q -72 0 -60 -34 Z" fill="${c}"/>
+    <circle cx="0" cy="0" r="8" fill="#fff" opacity="0.7"/>`,
+  block: (letter = 'E', c = '#8ecae6') => `
+    <rect x="-34" y="-34" width="68" height="68" rx="12" fill="${c}"/>
+    <rect x="-24" y="-24" width="48" height="48" rx="8" fill="#fff" opacity="0.85"/>
+    <text x="0" y="16" text-anchor="middle" font-size="42" font-weight="bold" fill="${c}" font-family="'Comic Sans MS',cursive">${letter}</text>`,
+  cat: () => `
+    <ellipse cx="0" cy="30" rx="52" ry="38" fill="#f0a860"/>
+    <circle cx="8" cy="-26" r="36" fill="#f0a860"/>
+    <path d="M -18 -50 L -12 -78 L 6 -56 Z" fill="#f0a860"/><path d="M 34 -50 L 40 -78 L 22 -56 Z" fill="#f0a860"/>
+    <path d="M -14 -52 L -10 -68 L 2 -56 Z" fill="#f8d8b8"/><path d="M 30 -52 L 36 -68 L 24 -56 Z" fill="#f8d8b8"/>
+    <path d="M -44 40 Q -92 30 -84 -14" stroke="#f0a860" stroke-width="16" fill="none" stroke-linecap="round"/>
+    <circle cx="-4" cy="-30" r="5" fill="#241812"/><circle cx="22" cy="-30" r="5" fill="#241812"/>
+    <path d="M 4 -18 Q 9 -14 14 -18" stroke="#a86a30" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <path d="M 6 -22 L 12 -22 L 9 -17 Z" fill="#e88aa0"/>
+    <line x1="-20" y1="-20" x2="-40" y2="-24" stroke="#a86a30" stroke-width="3"/>
+    <line x1="38" y1="-20" x2="58" y2="-24" stroke="#a86a30" stroke-width="3"/>
+    <path d="M -30 12 q 6 8 12 0 M 8 16 q 6 8 12 0" stroke="#d88a40" stroke-width="4" fill="none"/>`,
+  wateringCan: () => `
+    <path d="M -40 -30 L 40 -30 L 34 34 L -34 34 Z" fill="#5ec8b8"/>
+    <path d="M -38 -14 L -78 -34 L -84 -22 L -42 0 Z" fill="#5ec8b8"/>
+    <circle cx="-82" cy="-28" r="13" fill="#4ab0a0"/>
+    <path d="M 30 -22 Q 66 -10 36 12" stroke="#4ab0a0" stroke-width="10" fill="none"/>
+    <rect x="-26" y="-40" width="52" height="12" rx="6" fill="#4ab0a0"/>`,
+  plantPot: () => `
+    <g class="flower" transform="scale(0)" style="transform-box:fill-box; transform-origin:50% 100%">
+      <line x1="0" y1="-16" x2="0" y2="-78" stroke="#4ca858" stroke-width="7"/>
+      <path d="M 0 -50 Q -26 -58 -30 -40 Q -10 -36 0 -44 Z" fill="#4ca858"/>
+      <circle cx="0" cy="-88" r="14" fill="#ffd94d"/>
+      ${[0, 60, 120, 180, 240, 300].map(a => `<ellipse cx="0" cy="-110" rx="10" ry="14" fill="#ff8fb5" transform="rotate(${a} 0 -88)"/>`).join('')}
+    </g>
+    <path d="M -42 -18 L 42 -18 L 32 40 L -32 40 Z" fill="#c9744a"/>
+    <rect x="-46" y="-26" width="92" height="16" rx="6" fill="#b8623a"/>
+    <ellipse cx="0" cy="-18" rx="34" ry="7" fill="#6a4a32"/>`,
+  kaldero: () => `
+    <ellipse cx="0" cy="24" rx="56" ry="12" fill="#2a2a30"/>
+    <path d="M -56 24 Q -60 -28 0 -28 Q 60 -28 56 24 Q 0 38 -56 24 Z" fill="#3a3a42"/>
+    <ellipse cx="0" cy="-28" rx="58" ry="12" fill="#4a4a54"/>
+    <ellipse cx="0" cy="-30" rx="44" ry="8" fill="#f6e8d0"/>
+    <circle cx="0" cy="-44" r="9" fill="#3a3a42"/>
+    <path d="M -14 -52 Q -10 -70 -16 -84 M 10 -52 Q 14 -70 8 -84" stroke="#d8d8e0" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.8"/>
+    <line x1="-56" y1="-6" x2="-74" y2="-6" stroke="#3a3a42" stroke-width="10" stroke-linecap="round"/>
+    <line x1="56" y1="-6" x2="74" y2="-6" stroke="#3a3a42" stroke-width="10" stroke-linecap="round"/>`,
+  basketball: () => `
+    <circle r="44" fill="#f08838"/>
+    <path d="M -44 0 L 44 0 M 0 -44 L 0 44 M -31 -31 Q 0 0 -31 31 M 31 -31 Q 0 0 31 31" stroke="#8a4a20" stroke-width="4" fill="none"/>`,
+  tv: () => `
+    <rect x="-70" y="60" width="140" height="16" rx="8" fill="#8a6242"/>
+    <rect x="-12" y="30" width="24" height="34" fill="#5a5a64"/>
+    <rect x="-110" y="-90" width="220" height="124" rx="14" fill="#3a3a42"/>
+    <rect x="-98" y="-78" width="196" height="100" rx="8" fill="#8ecae6"/>
+    <circle cx="-40" cy="-30" r="20" fill="#ffd94d"/>
+    <path d="M 20 -6 L 70 -6 L 45 -50 Z" fill="#ff8fb5"/>
+    <rect x="-98" y="-4" width="196" height="26" fill="#9edb7a"/>`,
+  cap: () => `
+    <path d="M -50 6 Q -50 -44 0 -44 Q 50 -44 50 6 Z" fill="#4a90d9"/>
+    <path d="M 40 2 Q 92 0 96 14 Q 60 22 36 14 Z" fill="#3a78b8"/>
+    <circle cx="0" cy="-44" r="7" fill="#3a78b8"/>`,
+  flowerPot: (c = '#ff8fb5') => `
+    <line x1="0" y1="-14" x2="0" y2="-58" stroke="#4ca858" stroke-width="6"/>
+    <circle cx="0" cy="-66" r="10" fill="#ffd94d"/>
+    ${[0, 72, 144, 216, 288].map(a => `<ellipse cx="0" cy="-82" rx="8" ry="11" fill="${c}" transform="rotate(${a} 0 -66)"/>`).join('')}
+    <path d="M -26 -12 L 26 -12 L 20 24 L -20 24 Z" fill="#c9744a"/>`,
+  books: () => `
+    <rect x="-56" y="4" width="112" height="24" rx="6" fill="#e05a6a"/>
+    <rect x="-48" y="-20" width="96" height="24" rx="6" fill="#4a90d9"/>
+    <rect x="-52" y="-44" width="88" height="24" rx="6" fill="#f2c94c"/>
+    <line x1="-40" y1="16" x2="40" y2="16" stroke="#fff" stroke-width="3" opacity="0.6"/>`,
+  mirror: () => `
+    <ellipse cx="0" cy="0" rx="66" ry="88" fill="#d9a834"/>
+    <ellipse cx="0" cy="0" rx="54" ry="76" fill="#cfeef2"/>
+    <path class="sheen" d="M -30 50 L 10 -60 L 28 -60 L -12 50 Z" fill="#fff" opacity="0.5"/>
+    <circle cx="0" cy="-96" r="10" fill="#d9a834"/>`,
+  teddy: () => `
+    <circle cx="-34" cy="-58" r="17" fill="#c99a5e"/><circle cx="34" cy="-58" r="17" fill="#c99a5e"/>
+    <circle cx="-34" cy="-58" r="9" fill="#e8c890"/><circle cx="34" cy="-58" r="9" fill="#e8c890"/>
+    <circle cx="0" cy="-38" r="40" fill="#c99a5e"/>
+    <ellipse cx="0" cy="-26" rx="16" ry="12" fill="#e8c890"/>
+    <circle cx="-14" cy="-44" r="5" fill="#241812"/><circle cx="14" cy="-44" r="5" fill="#241812"/>
+    <ellipse cx="0" cy="-30" rx="6" ry="4" fill="#5a3a1c"/>
+    <ellipse cx="0" cy="30" rx="42" ry="36" fill="#c99a5e"/>
+    <circle cx="-40" cy="14" r="15" fill="#c99a5e"/><circle cx="40" cy="14" r="15" fill="#c99a5e"/>
+    <circle cx="-26" cy="60" r="16" fill="#c99a5e"/><circle cx="26" cy="60" r="16" fill="#c99a5e"/>
+    <circle cx="-26" cy="62" r="8" fill="#e8c890"/><circle cx="26" cy="62" r="8" fill="#e8c890"/>
+    <path d="M -14 -4 L 0 6 L -18 14 Q -24 4 -14 -4 Z" fill="#a83838"/>
+    <path d="M 14 -4 L 0 6 L 18 14 Q 24 4 14 -4 Z" fill="#a83838"/>`,
+  binoculars: () => `
+    <rect x="-58" y="-26" width="44" height="56" rx="14" fill="#d94f3c"/>
+    <rect x="14" y="-26" width="44" height="56" rx="14" fill="#d94f3c"/>
+    <rect x="-16" y="-16" width="32" height="24" rx="8" fill="#b83c2c"/>
+    <circle cx="-36" cy="-26" r="19" fill="#b83c2c"/><circle cx="36" cy="-26" r="19" fill="#b83c2c"/>
+    <circle cx="-36" cy="-26" r="11" fill="#7ad8f0"/><circle cx="36" cy="-26" r="11" fill="#7ad8f0"/>`,
+  sneakers: () => `
+    <g transform="translate(-34 0)">
+      <path d="M -30 10 Q -12 -18 8 -8 L 26 2 Q 34 6 32 16 L -30 16 Z" fill="#fff"/>
+      <path d="M -30 10 L 32 10 L 32 16 L -30 16 Z" fill="#ff8fb5"/>
+      <path d="M -14 -4 L 2 -10 M -10 2 L 8 -4" stroke="#ff8fb5" stroke-width="3"/>
+    </g>
+    <g transform="translate(40 4)">
+      <path d="M -30 10 Q -12 -18 8 -8 L 26 2 Q 34 6 32 16 L -30 16 Z" fill="#fff"/>
+      <path d="M -30 10 L 32 10 L 32 16 L -30 16 Z" fill="#ff8fb5"/>
+    </g>`,
+  umbrella: () => `
+    <g class="umb-open">
+      <path d="M -90 -20 Q 0 -110 90 -20 Q 60 -34 45 -20 Q 22 -38 0 -20 Q -22 -38 -45 -20 Q -60 -34 -90 -20 Z" fill="#5a6a78"/>
+      <line x1="0" y1="-66" x2="0" y2="60" stroke="#3a4650" stroke-width="7"/>
+      <path d="M 0 60 Q 14 74 26 60" stroke="#3a4650" stroke-width="7" fill="none"/>
+      <circle cx="0" cy="-72" r="6" fill="#3a4650"/>
+    </g>
+    <g class="umb-closed" style="display:none">
+      <path d="M -10 -70 Q 16 -20 -2 56 L -14 56 Q -26 -20 -10 -70 Z" fill="#5a6a78"/>
+      <line x1="-8" y1="-70" x2="-8" y2="60" stroke="#3a4650" stroke-width="5"/>
+      <path d="M -8 60 Q 6 74 18 60" stroke="#3a4650" stroke-width="6" fill="none"/>
+      <circle cx="-8" cy="-76" r="6" fill="#3a4650"/>
+    </g>`,
+  basket: () => `
+    <path d="M -60 -10 L 60 -10 L 46 44 L -46 44 Z" fill="#c9a06a"/>
+    <path d="M -60 -10 Q 0 -64 60 -10" stroke="#a87c4a" stroke-width="9" fill="none"/>
+    <path d="M -52 4 L 52 4 M -48 18 L 48 18 M -46 32 L 46 32" stroke="#a87c4a" stroke-width="4"/>
+    <path d="M -44 -10 Q -20 -26 0 -12 Q 20 -26 44 -10 Z" fill="#e05a6a"/>`,
+  camera: () => `
+    <rect x="-56" y="-34" width="112" height="72" rx="16" fill="#5a5a64"/>
+    <rect x="-56" y="-24" width="112" height="18" fill="#8a8a94"/>
+    <circle cx="6" cy="4" r="26" fill="#3a3a42"/><circle cx="6" cy="4" r="16" fill="#7ad8f0"/>
+    <circle cx="6" cy="4" r="7" fill="#2a2a30"/>
+    <rect x="-44" y="-46" width="26" height="14" rx="5" fill="#5a5a64"/>
+    <circle cx="40" cy="-14" r="6" fill="#ffd94d"/>`,
+};
+
+// ---- drag with springy wobble
+function getXY(el) { return { x: +el.dataset.x, y: +el.dataset.y }; }
+function setXY(el, x, y) {
+  el.dataset.x = x; el.dataset.y = y;
+  el.setAttribute('transform', `translate(${x} ${y}) scale(${el.dataset.s || 1})`);
+}
+function wobble(el) {
+  const s = +(el.dataset.s || 1);
+  tween(420, t => {
+    const k = 1 + Math.sin(t * Math.PI * 3) * 0.14 * (1 - t);
+    el.setAttribute('transform', `translate(${el.dataset.x} ${el.dataset.y}) scale(${s * k} ${s * (2 - k > 0 ? 2 - k : 1)})`);
+  }, () => setXY(el, +el.dataset.x, +el.dataset.y));
+}
+function makeDraggable(el, opts = {}) {
+  el.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    const start = toStage(e.clientX, e.clientY);
+    const base = getXY(el);
+    const off = { x: base.x - start.x, y: base.y - start.y };
+    el.parentNode.appendChild(el); // raise to front
+    Audio.sfx('pop');
+    let moved = false;
+    const move = ev => {
+      const p = toStage(ev.clientX, ev.clientY);
+      moved = true;
+      setXY(el, clamp(p.x + off.x, 50, 1550), clamp(p.y + off.y, 140, 870));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      wobble(el);
+      if (moved) Audio.sfx(opts.dropSfx || 'boing');
+      if (opts.onDrop) opts.onDrop(+el.dataset.x, +el.dataset.y, el);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+  });
+}
+
+// ---- per-house furniture + props
+const HOUSE_PROPS = {
+  eya: [
+    { id: 'wardrobe', x: 1430, y: 850, s: 1, kind: 'wardrobe' },
+    { id: 'unicorn', x: 520, y: 800, s: 1, kind: 'tap', sfx: 'chime', anim: 'rock' },
+    { id: 'cake', x: 720, y: 610, s: 1, kind: 'drag', table: true },
+    { id: 'pillow', x: 420, y: 830, s: 1, kind: 'drag', art: () => PROP_ART.pillow('#f6a8c9') },
+    { id: 'pillow2', x: 320, y: 790, s: 0.85, kind: 'drag', art: () => PROP_ART.pillow('#8ecae6') },
+    { id: 'blockE', x: 1050, y: 840, s: 1, kind: 'drag', art: () => PROP_ART.block('E', '#8ecae6') },
+    { id: 'blockY', x: 1140, y: 860, s: 1, kind: 'drag', art: () => PROP_ART.block('Y', '#9edb7a') },
+    { id: 'blockA', x: 1230, y: 835, s: 1, kind: 'drag', art: () => PROP_ART.block('A', '#ffb347') },
+  ],
+  lola: [
+    { id: 'cat', x: 950, y: 810, s: 1, kind: 'tap', sfx: 'meow', anim: 'pulse' },
+    { id: 'wateringCan', x: 480, y: 820, s: 1, kind: 'water' },
+    { id: 'plantPot', x: 1330, y: 800, s: 1, kind: 'pot' },
+    { id: 'plantPot2', x: 1470, y: 830, s: 0.85, kind: 'pot', art: () => PROP_ART.plantPot() },
+    { id: 'kaldero', x: 680, y: 620, s: 1, kind: 'drag', table: true },
+  ],
+  boy: [
+    { id: 'basketball', x: 640, y: 820, s: 1, kind: 'drag', dropSfx: 'bounce' },
+    { id: 'tv', x: 1330, y: 700, s: 1, kind: 'tap', sfx: 'chime', anim: 'wiggle' },
+    { id: 'cap', x: 460, y: 800, s: 1, kind: 'drag' },
+  ],
+  joyce: [
+    { id: 'flowerPot', x: 560, y: 810, s: 1, kind: 'drag', art: () => PROP_ART.flowerPot('#ff8fb5') },
+    { id: 'flower2', x: 680, y: 840, s: 0.9, kind: 'drag', art: () => PROP_ART.flowerPot('#f47a5e') },
+    { id: 'flower3', x: 460, y: 845, s: 0.9, kind: 'drag', art: () => PROP_ART.flowerPot('#c9a0f0') },
+    { id: 'books', x: 1300, y: 830, s: 1, kind: 'drag' },
+    { id: 'mirror', x: 1330, y: 380, s: 1, kind: 'tap', sfx: 'sparkle', anim: 'sheen' },
+  ],
+  kath: [
+    { id: 'teddy', x: 620, y: 810, s: 1, kind: 'tap', sfx: 'chime', anim: 'squeeze' },
+    { id: 'binoculars', x: 900, y: 830, s: 1, kind: 'peek' },
+    { id: 'sneakers', x: 1280, y: 850, s: 1, kind: 'drag' },
+  ],
+  aunt: [
+    { id: 'umbrella', x: 560, y: 790, s: 1, kind: 'umbrella' },
+    { id: 'basket', x: 950, y: 830, s: 1, kind: 'drag' },
+    { id: 'camera', x: 1300, y: 810, s: 1, kind: 'flash' },
+  ],
+};
+
+function propArt(p) {
+  if (p.art) return p.art();
+  return PROP_ART[p.id] ? PROP_ART[p.id]() : PROP_ART[p.id.replace(/\d+$/, '')]();
+}
+
 Scenes.house = {
   enter(houseId) {
     const h = HOUSES.find(x => x.id === houseId);
+    const wall = lighten(h.color, 0.55);
+    const wallDark = lighten(h.color, 0.3);
+    const props = HOUSE_PROPS[h.id] || [];
+
     stage.innerHTML = `
-      <rect width="1600" height="900" fill="#f4e8d8"/>
-      ${h.residents.map((r, i) =>
-        buildCharacter(CHARACTERS[r], { x: 600 + i * 220, y: 700, scale: 0.9, idle: true })).join('')}
+      <rect width="1600" height="640" fill="${wall}"/>
+      <rect y="600" width="1600" height="300" fill="#d9b48a"/>
+      ${Array.from({ length: 5 }, (_, i) => `<line x1="0" y1="${660 + i * 50}" x2="1600" y2="${660 + i * 50}" stroke="#c9a276" stroke-width="3"/>`).join('')}
+      <rect y="590" width="1600" height="18" fill="${wallDark}"/>
+      <ellipse cx="800" cy="770" rx="330" ry="90" fill="${lighten(h.color, 0.42)}"/>
+      <ellipse cx="800" cy="770" rx="250" ry="64" fill="${lighten(h.color, 0.52)}"/>
+      <!-- window with palm view -->
+      <g transform="translate(420 300)">
+        <rect x="-130" y="-110" width="260" height="220" rx="16" fill="#fffaf2"/>
+        <rect x="-114" y="-94" width="228" height="188" rx="10" fill="#aee3f5"/>
+        <circle cx="70" cy="-40" r="24" fill="#ffe066"/>
+        <path d="M -60 94 Q -58 30 -50 6 Q -80 -10 -96 8 Q -70 6 -56 26 Q -40 -12 -16 -2 Q -46 6 -52 30 L -44 94 Z" fill="#4ca858"/>
+        <line x1="0" y1="-94" x2="0" y2="94" stroke="#fffaf2" stroke-width="10"/>
+        <line x1="-114" y1="0" x2="114" y2="0" stroke="#fffaf2" stroke-width="10"/>
+        <path d="M -130 -110 Q -150 0 -130 110 L -118 110 Q -134 0 -118 -110 Z" fill="#f6d8b8"/>
+        <path d="M 130 -110 Q 150 0 130 110 L 118 110 Q 134 0 118 -110 Z" fill="#f6d8b8"/>
+      </g>
+      <!-- framed family heart -->
+      <g transform="translate(1100 260)">
+        <rect x="-64" y="-78" width="128" height="156" rx="10" fill="#c9a06a"/>
+        <rect x="-52" y="-66" width="104" height="132" rx="6" fill="#fffaf2"/>
+        <path d="M 0 34 C -44 2 -34 -40 -8 -30 Q 0 -26 0 -18 Q 0 -26 8 -30 C 34 -40 44 2 0 34 Z" fill="#ff8fb5"/>
+      </g>
+      <g id="propLayer"></g>
+      <g id="residentLayer"></g>
+      <g id="fxLayer"></g>
       <g id="homeBtn" style="cursor:pointer">
-        <circle cx="90" cy="810" r="58" fill="#fff" opacity="0.9"/>
-        <text x="90" y="834" text-anchor="middle" font-size="60">🏠</text>
+        <circle cx="92" cy="806" r="58" fill="#fff" opacity="0.9"/>
+        <text x="92" y="830" text-anchor="middle" font-size="58">🏠</text>
       </g>
       ${muteButtonSVG()}
     `;
-    $('#homeBtn').addEventListener('pointerdown', () => App.go('map'));
+
+    // residents + Eya
+    const rl = $('#residentLayer');
+    let rHtml = '';
+    h.residents.filter(r => r !== 'eya').forEach((r, i) => {
+      rHtml += `<g class="resident" data-key="${r}" style="cursor:pointer">${
+        buildCharacter(CHARACTERS[r], { x: 1040 - i * 190, y: 760, scale: 0.72, idle: true, facing: -1 })
+      }</g>`;
+    });
+    rHtml += `<g class="resident" data-key="eya">${
+      buildCharacter(effectiveEyaSpec(), { x: 250, y: 830, scale: 0.66, idle: true })
+    }</g>`;
+    rl.innerHTML = rHtml;
+
+    rl.querySelectorAll('.resident').forEach(el => {
+      el.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        waveCharacter(el);
+        Audio.sfx('chime');
+        Audio.say(CHARACTERS[el.dataset.key].label);
+      });
+    });
+    // welcome wave from the host
+    const host = rl.querySelector('.resident');
+    if (host) setTimeout(() => waveCharacter(host), 400);
+
+    // props
+    const pl = $('#propLayer');
+    pl.innerHTML = props.map(p => `
+      ${p.table ? `<g transform="translate(${p.x} ${p.y + 24})">
+        <rect x="-110" y="-14" width="220" height="20" rx="8" fill="#a87c4a"/>
+        <rect x="-92" y="6" width="16" height="86" fill="#8a6242"/>
+        <rect x="76" y="6" width="16" height="86" fill="#8a6242"/></g>` : ''}
+      <g class="prop" data-id="${p.id}" data-x="${p.x}" data-y="${p.y}" data-s="${p.s}"
+         transform="translate(${p.x} ${p.y}) scale(${p.s})" style="cursor:pointer">${propArt(p)}</g>
+    `).join('');
+
+    props.forEach(p => {
+      const el = pl.querySelector(`.prop[data-id="${p.id}"]`);
+      switch (p.kind) {
+        case 'drag':
+          makeDraggable(el, { dropSfx: p.dropSfx, onDrop: (x, y) => Scenes.house.onPropDrop(h, p, x, y, el) });
+          break;
+        case 'wardrobe':
+          el.addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            if (App.locked) return;
+            Audio.sfx('sparkle');
+            App.go('dressup');
+          });
+          break;
+        case 'tap':
+          el.addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            Audio.sfx(p.sfx || 'pop');
+            const s = p.s;
+            if (p.anim === 'rock') {
+              tween(900, t => el.setAttribute('transform',
+                `translate(${p.x} ${p.y}) scale(${s}) rotate(${Math.sin(t * Math.PI * 4) * 12})`),
+                () => setXY(el, p.x, p.y));
+            } else if (p.anim === 'pulse' || p.anim === 'squeeze') {
+              tween(500, t => {
+                const k = 1 + Math.sin(t * Math.PI * 2) * 0.12;
+                el.setAttribute('transform', `translate(${p.x} ${p.y}) scale(${s * k} ${s / k})`);
+              }, () => setXY(el, p.x, p.y));
+            } else if (p.anim === 'wiggle') {
+              tween(500, t => el.setAttribute('transform',
+                `translate(${p.x} ${p.y}) scale(${s}) rotate(${Math.sin(t * Math.PI * 6) * 4})`),
+                () => setXY(el, p.x, p.y));
+            } else if (p.anim === 'sheen') {
+              const sheen = el.querySelector('.sheen');
+              tween(600, t => sheen && sheen.setAttribute('transform', `translate(${-60 + t * 120} 0)`));
+            }
+          });
+          break;
+        case 'water':
+          makeDraggable(el, {
+            onDrop: (x, y) => {
+              props.filter(q => q.kind === 'pot').forEach(q => {
+                const potEl = pl.querySelector(`.prop[data-id="${q.id}"]`);
+                if (potEl && dist(x, y, +potEl.dataset.x, +potEl.dataset.y) < 150) {
+                  const fl = potEl.querySelector('.flower');
+                  if (fl && !potEl.dataset.bloomed) {
+                    potEl.dataset.bloomed = '1';
+                    Audio.sfx('sparkle');
+                    tween(700, t => fl.setAttribute('transform', `scale(${easeInOut(t)})`));
+                  }
+                }
+              });
+            }
+          });
+          break;
+        case 'pot': break; // static target
+        case 'peek':
+          el.addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            Audio.sfx('pop');
+            const fx = $('#fxLayer');
+            fx.innerHTML = `
+              <defs><mask id="peekMask">
+                <rect width="1600" height="900" fill="white"/>
+                <circle cx="710" cy="440" r="180" fill="black"/>
+                <circle cx="930" cy="440" r="180" fill="black"/>
+              </mask></defs>
+              <rect width="1600" height="900" fill="#1a1a22" mask="url(#peekMask)" opacity="0.93"/>`;
+            setTimeout(() => { fx.innerHTML = ''; Audio.sfx('chime'); }, 1600);
+          });
+          break;
+        case 'umbrella':
+          el.addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            Audio.sfx('boing');
+            const open = el.querySelector('.umb-open'), closed = el.querySelector('.umb-closed');
+            const isOpen = open.style.display !== 'none';
+            open.style.display = isOpen ? 'none' : '';
+            closed.style.display = isOpen ? '' : 'none';
+            wobble(el);
+          });
+          break;
+        case 'flash':
+          el.addEventListener('pointerdown', e => {
+            e.stopPropagation();
+            Audio.sfx('chime');
+            const fx = $('#fxLayer');
+            fx.innerHTML = `<rect width="1600" height="900" fill="#fff"/>`;
+            setTimeout(() => { fx.innerHTML = ''; }, 180);
+          });
+          break;
+      }
+    });
+
+    $('#homeBtn').addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      App.go('map');
+    });
     wireMuteButton();
   },
+  onPropDrop() {}, // Task 6 hooks task completion here
   exit() {}
 };
 
@@ -1011,8 +1427,13 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault());
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
-// #lineup and #map are debug entry points
-App.go(location.hash === '#lineup' ? 'lineup' : location.hash === '#map' ? 'map' : 'title');
+// #lineup, #map, #house-<id>, #dressup are debug entry points
+const dbg = location.hash.slice(1);
+App.go(dbg === 'lineup' ? 'lineup'
+  : dbg === 'map' ? 'map'
+  : dbg === 'dressup' ? 'dressup'
+  : dbg.startsWith('house-') ? 'house:' + dbg.slice(6)
+  : 'title');
 </script>
 </body>
 </html>
