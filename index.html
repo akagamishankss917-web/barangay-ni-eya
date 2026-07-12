@@ -53,12 +53,22 @@ const dist  = (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1);
 const stage = document.getElementById('stage');
 
 // Convert a client (pointer) coordinate to 1600x900 design space.
+// NOT getScreenCTM(): WebKit leaves CSS transforms out of that matrix, so on iOS
+// the portrait rotate(90deg) from fitStage() was invisible to it and every touch
+// mapped to a frame rotated about the screen centre. getBoundingClientRect sees
+// the rotation on every browser, so we undo it by hand.
+let stageRot = 0;                                  // 0 or 90, set by fitStage()
 function toStage(clientX, clientY) {
-  const pt = new DOMPoint(clientX, clientY);
-  const m = stage.getScreenCTM();
-  if (!m) return { x: 0, y: 0 };
-  const p = pt.matrixTransform(m.inverse());
-  return { x: p.x, y: p.y };
+  const r = stage.getBoundingClientRect();
+  if (!r.width || !r.height) return { x: 0, y: 0 };
+  const W = stageRot ? r.height : r.width;         // the stage's own, unrotated box
+  const H = stageRot ? r.width : r.height;
+  const dx = clientX - (r.left + r.width / 2);     // offset from the stage centre
+  const dy = clientY - (r.top + r.height / 2);
+  const a = stageRot ? dy : dx;                    // rotate(90deg) maps (a,b) -> (-b,a)
+  const b = stageRot ? -dx : dy;
+  const s = Math.min(W / 1600, H / 900);           // preserveAspectRatio="xMidYMid meet"
+  return { x: 800 + a / s, y: 450 + b / s };       // viewBox centre is the box centre
 }
 
 // requestAnimationFrame tween. fn(t) gets t in [0,1]. Returns cancel().
@@ -1142,7 +1152,7 @@ Scenes.title = {
         <text x="803" y="323" font-size="118" font-weight="bold" fill="#3d7a52" opacity="0.35">Barangay ni Eya</text>
         <text x="800" y="315" font-size="118" font-weight="bold" fill="#ff8fb5" stroke="#fff" stroke-width="4" paint-order="stroke">Barangay ni Eya</text>
       </g>
-      <text x="1580" y="888" text-anchor="end" font-size="26" fill="#3d7a52" opacity="0.7" font-family="sans-serif">v9</text>
+      <text x="1580" y="888" text-anchor="end" font-size="26" fill="#3d7a52" opacity="0.7" font-family="sans-serif">v10</text>
       <!-- Eya waving hello -->
       <g id="titleEya">${buildCharacter(effectiveEyaSpec(), { x: 430, y: 780, scale: 0.95, idle: true })}</g>
       <!-- play button -->
@@ -3540,8 +3550,10 @@ function fitStage() {
     s.maxWidth = 'none';
     s.maxHeight = 'none';
     s.transform = 'rotate(90deg)';
+    stageRot = 90;                    // toStage() has to undo this by hand
   } else {
     s.width = s.height = s.maxWidth = s.maxHeight = s.transform = '';
+    stageRot = 0;
   }
 }
 fitStage();
